@@ -4,8 +4,11 @@ use Mojo::Base -base;
 use Mojo::DOM;
 use Mojo::Util qw(decode slurp);
 use Mojo::Collection;
+use Mojo::IOLoop;
+use Mango;
 
 has subscriptions => sub { Mojo::Collection->new(); };
+has db => sub { Mango->new('mongodb://localhost:27017')->db('hadashot'); };
 
 sub parse_opml {
   my ($self, $opml_file) = @_;
@@ -34,7 +37,7 @@ sub parse_opml {
   return $this;
 }
 
-sub annotate {
+sub annotate_bidi {
   my ($self) = @_;
   for my $sub ($self->subscriptions->each) {
      my $is_bidi = ($sub->{title} =~ /\p{Hebrew}+/);
@@ -42,6 +45,24 @@ sub annotate {
  	$sub->{'rtl'} = 1;
      }
   }
+}
+
+sub fetch_subscriptions {
+  my ($self, $ua) = @_;
+  my $delay = Mojo::IOLoop->delay(sub {
+    my ($delay, @titles) = @_;
+  });
+  for my $sub ($self->subscriptions->each) {
+    $delay->begin;
+    my $url = $sub->{xmlUrl};	
+    $ua->get($url => sub {
+      my ($ua, $tx) = @_;
+      print $url, " ", $tx->res->code, "\n";
+      $delay->end($tx->res->dom->at('title')->text);
+    });
+  }
+  $delay->wait unless Mojo::IOLoop->is_running;
+
 }
 
 1;
