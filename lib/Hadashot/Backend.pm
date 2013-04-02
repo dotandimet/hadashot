@@ -37,6 +37,13 @@ sub parse_opml {
   return $this;
 }
 
+sub load_subs {
+  my ($self) = @_;
+  my $coll = $self->db()->collection('subs');
+  my $subs = $coll->find()->all;
+  $self->subscriptions(Mojo::Collection->new(@$subs));
+}
+
 sub annotate_bidi {
   my ($self) = @_;
   for my $sub ($self->subscriptions->each) {
@@ -51,14 +58,17 @@ sub fetch_subscriptions {
   my ($self, $ua) = @_;
   my $delay = Mojo::IOLoop->delay(sub {
     my ($delay, @titles) = @_;
+    print "@titles\n";
   });
+  $ua->max_redirects(5);
   for my $sub ($self->subscriptions->each) {
+    my $url = $sub->{xmlUrl};
     $delay->begin;
-    my $url = $sub->{xmlUrl};	
     $ua->get($url => sub {
       my ($ua, $tx) = @_;
       print $url, " ", $tx->res->code, "\n";
-      $delay->end($tx->res->dom->at('title')->text);
+      $delay->end("hey");
+  #    $delay->end($tx->res->dom->at('description')->text);
     });
   }
   $delay->wait unless Mojo::IOLoop->is_running;
