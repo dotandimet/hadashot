@@ -1,0 +1,5 @@
+script/hadashot eval 'use Hadashot::Backend; my $h = Hadashot::Backend->new; $h->load_subs; print $_->{xmlUrl}, "\n" for ($h->subscriptions->each); $h->fetch_subscriptions(app()->ua);'
+
+perl -MMojo::DOM -MMojo::Util=decode,slurp -E 'my $c = decode q{UTF-8}, slurp q{bazek}; my $d = Mojo::DOM->new($c); say $_->find(q{title})->pluck(q{text}), q{ }, $_->find(q{link})->pluck(q{text}) for ($d->find(q{item})->each);'
+
+curl -v http://www.bazekalim.com/feed/ -o bazek
