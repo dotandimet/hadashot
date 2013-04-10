@@ -6,7 +6,7 @@
 % end
 <div>
 % if ($subs) { 
-<dl>
+<dl class=>
 % for my $item ($subs->subscriptions->each) {
 % my ($dir, $align) = ($item->{rtl}) ? ('rtl', 'right') : ('ltr', 'left');
 <dt align="<%= $align %>"><span dir="<%= $dir %>"><%== $item->{title} %></span></dt>

@@ -3,3 +3,7 @@ script/hadashot eval 'use Hadashot::Backend; my $h = Hadashot::Backend->new; $h-
 perl -MMojo::DOM -MMojo::Util=decode,slurp -E 'my $c = decode q{UTF-8}, slurp q{bazek}; my $d = Mojo::DOM->new($c); say $_->find(q{title})->pluck(q{text}), q{ }, $_->find(q{link})->pluck(q{text}) for ($d->find(q{item})->each);'
 
 curl -v http://www.bazekalim.com/feed/ -o bazek
+
+script/hadashot eval 'use Mojo::JSON; use Mojo::Util q(slurp); my $a = Mojo::JSON->new; $b = $a->decode(slurp pop); print scalar @{$b->{items}}, qq{\n}; my %k; map { $k{$_}++ } keys %$_ for (@{$b->{items}}); print $_, q{ }, $k{$_}, qq{\n} for (keys %k);' ~/Dropbox/dotandimet\@gmail.com-takeout/Reader/shared.json
+
+

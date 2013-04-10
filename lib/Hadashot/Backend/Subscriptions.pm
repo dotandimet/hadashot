@@ -27,6 +27,7 @@ sub new_from_opml {
 		push @{$subscriptions{$rss}{'categories'}}, $cat;
 	}
   }
+	
   $this->subscriptions( Mojo::Collection->new(values %subscriptions) );
   return $this;
 }

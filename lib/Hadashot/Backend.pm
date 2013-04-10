@@ -2,6 +2,7 @@ package Hadashot::Backend;
 use Mojo::Base -base;
 
 use Mojo::DOM;
+use Mojo::JSON;
 use Mojo::Util qw(decode slurp);
 use Mojo::Collection;
 use Mojo::IOLoop;
@@ -9,6 +10,7 @@ use Mango;
 
 has subscriptions => sub { Mojo::Collection->new(); };
 has db => sub { Mango->new('mongodb://localhost:27017')->db('hadashot'); };
+has json => sub { Mojo::JSON->new(); };
 
 sub parse_opml {
   my ($self, $opml_file) = @_;
@@ -75,4 +77,38 @@ sub fetch_subscriptions {
 
 }
 
+sub parse_json_collection {
+	my ($self, $file) = @_;
+	my $str = slurp $file;
+	my $obj = Mojo::JSON->new->decode($str);
+	my $items = delete $obj->{'items'};
+	foreach my $item (@$items) {
+		
+	}
+	my $props = $obj;
+}
+
+sub cleanup_reader_fields {
+	my ($self, $item) = @_;
+	
+}
+
+sub load_rss {
+	my ($self, $rss_file) = @_;
+  my $rss_str  = decode 'UTF-8', (ref $rss_file) ? $rss_file->slurp : slurp $rss_file;
+  my $d = Mojo::DOM->new($rss_str);
+	my $items = $d->find('item');
+	foreach my $item ($items->each) {
+		my %h;
+		foreach my $k (qw(title link summary content description content\:encoded)) {
+			my $p = $item->at($k);
+			if ($p) {
+				$h{$k} = $p->text;
+			}
+		}
+		say Mojo::JSON->new->encode(\%h);
+	}
+	# get channel properties:
+	#foreach my $k (qw(
+}
 1;
