@@ -12,13 +12,25 @@ sub import {
 	$out->annotate_bidi(); # set rtl flag
      my $coll = $out->db()->collection('subs');
      for my $sub ($out->subscriptions->each) {
-	my $oid = $coll->insert($sub);
-        if ($oid) {
-           print $sub->{title}, " stored with id $oid\n";
-        }
+     my $doc = $coll->find_one({xmlUrl => $sub->{xmlUrl}});
+     if ($doc) {
+          print $sub->{title}, " already exists in db with id ", $doc->{_id}, "\n";
+     }
+     else {
+      my $oid = $coll->insert($sub);
+            if ($oid) {
+              print $sub->{title}, " stored with id $oid\n";
+            }
+     }
      }
   }
   $self->render( subs => $out );
+}
+
+sub blogroll {
+  my ($self) = @_;
+  my $subs = Hadashot::Backend->load_subs();
+  $self->render( subs => $subs , template => 'settings/import' );
 }
 
 1;

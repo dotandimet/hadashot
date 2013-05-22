@@ -12,10 +12,12 @@ sub startup {
   my $r = $self->routes;
 
   # Normal route to controller
-  $r->get('/')->to('example#welcome');
-  $r->any('/import')->to('settings#import');
-	$r->get('/bookmark/add')->to('bookmark#add');
-  $r->get('/bookmark/list')->to('bookmark#list');
+  $r->any('/(:controller)/(:action)')->to(controller => 'settings', action =>
+  'import');
+#  $r->get('/')->to('example#welcome');
+#  $r->any('/import')->to('settings#import');
+#	$r->get('/bookmark/add')->to('bookmark#add');
+#  $r->get('/bookmark/list')->to('bookmark#list');
 }
 
 1;
