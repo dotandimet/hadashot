@@ -10,9 +10,14 @@
 % for my $item ($subs->subscriptions->each) {
 % my ($dir, $align) = ($item->{rtl}) ? ('rtl', 'right') : ('ltr', 'left');
 <dt align="<%= $align %>"><a href="<%= $item->{xmlUrl} %>"><i class="icon-rss"></i> rss</a>
-<span dir="<%= $dir %>" ><%== $item->{title} %></span>
+<a dir="<%= $dir %>" href="<%= $item->{htmlUrl} %>"><%== $item->{title} %></a>
 </dt>
-<dd></dd>
+<dd><b>Categories</b>
+%= join q{, }, sort @{ $item->{categories} || [] };
+<div class="well">
+%= dumper $item;
+</div>
+</dd>
 % }
 </dl>
 % }

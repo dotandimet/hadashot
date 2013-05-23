@@ -30,6 +30,7 @@ sub parse_opml {
   }
   # assign categories
   for my $cat (keys %categories) {
+	print "category $cat\n";
 	for my $rss ($categories{$cat}->each) {
 		$subscriptions{$rss}{'categories'} ||= [];
 		push @{$subscriptions{$rss}{'categories'}}, $cat;
