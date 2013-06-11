@@ -60,22 +60,26 @@ sub annotate_bidi {
 sub fetch_subscriptions {
   my ($self, $ua) = @_;
   my $delay = Mojo::IOLoop->delay(sub {
-    my ($delay, @titles) = @_;
-    print "@titles\n";
+    say "Done.";
   });
   $ua->max_redirects(5);
   for my $sub ($self->subscriptions->each) {
     my $url = $sub->{xmlUrl};
-    $delay->begin;
-    $ua->get($url => sub {
+    my $end = $delay->begin(0);
+    $ua->head($url => sub {
       my ($ua, $tx) = @_;
-      print $url, " ", $tx->res->code, "\n";
-      $delay->end("hey");
+      if (my $res = $tx->success) {
+        print $url, " :-) ", $tx->res->code, "\n";
+      }
+      else {
+        my ($err, $code) = $tx->error;
+        say $url, " :-( ", ( $code ? "$code response $err" : "connection error: $err" );
+      }
+      $end->();
   #    $delay->end($tx->res->dom->at('description')->text);
     });
   }
   $delay->wait unless Mojo::IOLoop->is_running;
-
 }
 
 sub parse_json_collection {
