@@ -71,10 +71,16 @@ sub fetch_subscriptions {
   for my $sub ($self->subscriptions->each) {
     my $url = $sub->{xmlUrl};
     my $end = $delay->begin(0);
-    $ua->head($url => sub {
+    $ua->get($url => sub {
       my ($ua, $tx) = @_;
       if (my $res = $tx->success) {
-        print $url, " :-) ", $tx->res->code, "\n";
+        say $url, " :-) ", $tx->res->code;
+        if ($tx->res->code == 200) {
+          say " ",
+          $tx->res->headers->last_modified,
+          " ", $tx->res->headers->etag;
+          $self->load_rss($res->content->asset);
+        }
         $hits++;
       }
       else {
