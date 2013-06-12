@@ -11,6 +11,7 @@ use Mango;
 has subscriptions => sub { Mojo::Collection->new(); };
 has db => sub { Mango->new('mongodb://localhost:27017')->db('hadashot'); };
 has json => sub { Mojo::JSON->new(); };
+has ua => sub { Mojo::UserAgent->new(); };
 
 sub parse_opml {
   my ($self, $opml_file) = @_;
@@ -58,11 +59,15 @@ sub annotate_bidi {
 }
 
 sub fetch_subscriptions {
-  my ($self, $ua) = @_;
+  my ($self) = @_;
+  my $ua = $self->ua;
+  my ($hits, $errs) = (0,0);
+  my $total = $self->subscriptions->size;
   my $delay = Mojo::IOLoop->delay(sub {
-    say "Done.";
+    say "Done - got $hits hits and $errs errors out of $total feeds";
   });
-  $ua->max_redirects(5);
+  $ua->max_redirects(5)->connect_timeout(30);
+  say "Will check $total feeds";
   for my $sub ($self->subscriptions->each) {
     my $url = $sub->{xmlUrl};
     my $end = $delay->begin(0);
@@ -70,10 +75,12 @@ sub fetch_subscriptions {
       my ($ua, $tx) = @_;
       if (my $res = $tx->success) {
         print $url, " :-) ", $tx->res->code, "\n";
+        $hits++;
       }
       else {
         my ($err, $code) = $tx->error;
         say $url, " :-( ", ( $code ? "$code response $err" : "connection error: $err" );
+        $errs++;
       }
       $end->();
   #    $delay->end($tx->res->dom->at('description')->text);

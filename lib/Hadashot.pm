@@ -1,5 +1,6 @@
 package Hadashot;
 use Mojo::Base 'Mojolicious';
+use Hadashot::Backend;
 
 # This method will run once at server start
 sub startup {
@@ -7,6 +8,10 @@ sub startup {
 
   # Documentation browser under "/perldoc"
   $self->plugin('PODRenderer');
+
+  # our backend functionality:
+
+  $self->helper(backend => sub { state $bak = Hadashot::Backend->new(ua => $self->ua) });
 
   # Router
   my $r = $self->routes;

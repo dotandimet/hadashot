@@ -6,4 +6,19 @@ curl -v http://www.bazekalim.com/feed/ -o bazek
 
 script/hadashot eval 'use Mojo::JSON; use Mojo::Util q(slurp); my $a = Mojo::JSON->new; $b = $a->decode(slurp pop); print scalar @{$b->{items}}, qq{\n}; my %k; map { $k{$_}++ } keys %$_ for (@{$b->{items}}); print $_, q{ }, $k{$_}, qq{\n} for (keys %k);' ~/Dropbox/dotandimet\@gmail.com-takeout/Reader/shared.json
 
+ time MOJO_REACTOR=Mojo::Reactor::Poll perl -Ilib -MHadashot::Backend script/hadashot eval 'my $h = app->backend; $h->load_subs; $h->fetch_subscriptions();'
+Done - got 237 hits and 57 errors out of 294 feeds
+
+real	0m52.390s
+user	0m1.364s
+sys	0m0.116s
+
+
+time MOJO_REACTOR=Mojo::Reactor::EV perl -Ilib -MHadashot::Backend script/hadashot eval 'my $h = app->backend; $h->load_subs; $h->fetch_subscriptions();'
+Done - got 223 hits and 71 errors out of 294 feeds
+
+real	0m43.811s
+user	0m1.052s
+sys	0m0.120s
+
 
