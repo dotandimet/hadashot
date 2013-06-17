@@ -7,6 +7,7 @@ use Mojo::Util qw(decode slurp);
 use Mojo::Collection;
 use Mojo::IOLoop;
 use Mango;
+use HTTP::Date;
 
 has subscriptions => sub { Mojo::Collection->new(); };
 has db => sub { Mango->new('mongodb://localhost:27017')->db('hadashot'); };
@@ -65,6 +66,8 @@ sub fetch_subscriptions {
   my $total = $self->subscriptions->size;
   my $delay = Mojo::IOLoop->delay(sub {
     say "Done - got $hits hits and $errs errors out of $total feeds";
+		my $read = $self->subscriptions->grep(sub { $_[0]->{'active'} == 1 })->size;
+		say " Marked $read active feeds"; 
   });
   $ua->max_redirects(5)->connect_timeout(30);
   say "Will check $total feeds";
@@ -74,19 +77,25 @@ sub fetch_subscriptions {
     $ua->get($url => sub {
       my ($ua, $tx) = @_;
       if (my $res = $tx->success) {
-        say $url, " :-) ", $tx->res->code;
         if ($tx->res->code == 200) {
-          say " ",
+        say $url, " :-) ", $tx->res->code
+          , " ",
           $tx->res->headers->last_modified,
           " ", $tx->res->headers->etag;
-          $self->load_rss($res->content->asset);
+        #  $self->load_rss($res->content->asset);
+					say "=====";	
+					say $tx->res->body;
+					say "=====";	
+					$sub->{'active'} = 1;
         }
+				else { say "$url :-( " , $tx->res->code; };
         $hits++;
       }
       else {
         my ($err, $code) = $tx->error;
         say $url, " :-( ", ( $code ? "$code response $err" : "connection error: $err" );
         $errs++;
+				$sub->{'active'} = 0;
       }
       $end->();
   #    $delay->end($tx->res->dom->at('description')->text);
@@ -116,13 +125,23 @@ sub load_rss {
   my $rss_str  = decode 'UTF-8', (ref $rss_file) ? $rss_file->slurp : slurp $rss_file;
   my $d = Mojo::DOM->new($rss_str);
 	my $items = $d->find('item');
-	foreach my $item ($items->each) {
+	my $entries = $d->find('entry'); # Atom
+	foreach my $item ($items->each, $entries->each) {
 		my %h;
-		foreach my $k (qw(title link summary content description content\:encoded)) {
+		foreach my $k (qw(title link summary content description content\:encoded pubDate published updated dc\:date)) {
 			my $p = $item->at($k);
 			if ($p) {
 				$h{$k} = $p->text;
+				if ($k eq 'pubDate' || $k eq 'published' || $k eq 'updated' || $k eq 'dc\:date') {
+					$h{$k} = str2time($h{$k});
+				}
 			}
+		}
+		# normalize fields:
+		my %replace = ( 'content\:encoded' => 'content', 'pubDate' => 'published', 'dc\:date' => 'published' );
+		while (my ($old, $new) = each %replace) {
+		if ($h{$old}) {
+			$h{$new} = delete $h{$old};
 		}
 		say Mojo::JSON->new->encode(\%h);
 	}

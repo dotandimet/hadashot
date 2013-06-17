@@ -1,6 +1,13 @@
 package Hadashot::Backend::WebResource;
 use Mojo::Base '-base';
+use Mojo::URL;
 has [qw(href type length title)];
+
+sub url {
+	my $self = shift;
+	return unless ($self->href);
+	return Mojo::URL->new($self->href);
+}
 
 package Hadashot::Backend::WebText;
 use Mojo::Base '-base';
@@ -36,4 +43,5 @@ has [qw(
 has [qw{alternate canonical}] => sub { Hadashot::Backend::WebResource->new(@_) };
 has [qw{replies}] => sub { [ map { Hadashot::Backend::WebResource->new($_) } @{$_[0]} ] };
 has [qw(summary content)] => sub { Hadashot::Backend::WebText->new(@_) };
+
 1;
