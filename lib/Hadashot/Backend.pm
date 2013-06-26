@@ -8,8 +8,9 @@ use Mojo::Collection;
 use Mojo::IOLoop;
 use Mango;
 use HTTP::Date;
+use Hadashot::Backend::Subscriptions;
 
-has subscriptions => sub { Mojo::Collection->new(); };
+has subscriptions => sub { Hadashot::Backend::Subscriptions->new(); };
 has db => sub { Mango->new('mongodb://localhost:27017')->db('hadashot'); };
 has json => sub { Mojo::JSON->new(); };
 has ua => sub { Mojo::UserAgent->new(); };
@@ -38,7 +39,7 @@ sub parse_opml {
 		push @{$subscriptions{$rss}{'categories'}}, $cat;
 	}
   }
-  $this->subscriptions( Mojo::Collection->new(values %subscriptions) );
+  $this->subscriptions( Hadashot::Backend::Subscriptions->new(values %subscriptions) );
   return $this;
 }
 
@@ -46,7 +47,7 @@ sub load_subs {
   my ($self) = @_;
   my $coll = $self->db()->collection('subs');
   my $subs = $coll->find()->all;
-  $self->subscriptions(Mojo::Collection->new(@$subs));
+  $self->subscriptions(Hada->new(@$subs));
 }
 
 sub annotate_bidi {
@@ -60,18 +61,28 @@ sub annotate_bidi {
 }
 
 sub fetch_subscriptions {
-  my ($self) = @_;
+  my ($self, $active) = @_;
   my $ua = $self->ua;
   my ($hits, $errs) = (0,0);
-  my $total = $self->subscriptions->size;
+  my $subs = (defined $active) ? $self->subscriptions->map(sub {
+  shift->{active} }) : $self->subscriptions;
+    my $subs = 
+  }
+  my $total = $subs->size;
   my $delay = Mojo::IOLoop->delay(sub {
     say "Done - got $hits hits and $errs errors out of $total feeds";
-		my $read = $self->subscriptions->grep(sub { $_[0]->{'active'} == 1 })->size;
-		say " Marked $read active feeds"; 
+		my $read = $subs->grep(sub { $_[0]->{'active'} == 1 })->size;
+		say " Marked $read active feeds";
+    if ($total > $read) {
+      my $inactive = $subs->grep(sub { 
+      say " Marked 
+    }
   });
   $ua->max_redirects(5)->connect_timeout(30);
   say "Will check $total feeds";
-  for my $sub ($self->subscriptions->each) {
+
+  $self->subscriptions->each(sub {
+    my $sub = shift;
     my $url = $sub->{xmlUrl};
     my $end = $delay->begin(0);
     $ua->get($url => sub {
@@ -100,7 +111,7 @@ sub fetch_subscriptions {
       $end->();
   #    $delay->end($tx->res->dom->at('description')->text);
     });
-  }
+  });
   $delay->wait unless Mojo::IOLoop->is_running;
 }
 
@@ -121,6 +132,7 @@ sub cleanup_reader_fields {
 }
 
 sub load_rss {
+{
 	my ($self, $rss_file) = @_;
   my $rss_str  = decode 'UTF-8', (ref $rss_file) ? $rss_file->slurp : slurp $rss_file;
   my $d = Mojo::DOM->new($rss_str);
@@ -143,6 +155,7 @@ sub load_rss {
 		if ($h{$old}) {
 			$h{$new} = delete $h{$old};
 		}
+    {
 		say Mojo::JSON->new->encode(\%h);
 	}
 	# get channel properties:
