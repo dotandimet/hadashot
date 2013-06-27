@@ -47,7 +47,7 @@ sub load_subs {
   my ($self) = @_;
   my $coll = $self->db()->collection('subs');
   my $subs = $coll->find()->all;
-  $self->subscriptions(Hada->new(@$subs));
+  $self->subscriptions(Hadashot::Backend::Subscriptions->new(@$subs));
 }
 
 sub annotate_bidi {
@@ -61,29 +61,24 @@ sub annotate_bidi {
 }
 
 sub fetch_subscriptions {
-  my ($self, $active) = @_;
+  my ($self, $check_all) = @_;
   my $ua = $self->ua;
   my ($hits, $errs) = (0,0);
-  my $subs = (defined $active) ? $self->subscriptions->map(sub {
-  shift->{active} }) : $self->subscriptions;
-    my $subs = 
-  }
+  my $subs = (defined $check_all) ? $self->subscriptions : $self->subscriptions->active() ; 
   my $total = $subs->size;
   my $delay = Mojo::IOLoop->delay(sub {
     say "Done - got $hits hits and $errs errors out of $total feeds";
-		my $read = $subs->grep(sub { $_[0]->{'active'} == 1 })->size;
-		say " Marked $read active feeds";
-    if ($total > $read) {
-      my $inactive = $subs->grep(sub { 
-      say " Marked 
-    }
+    say "Marked ", $subs->active()->size, " feeds as active and ", 
+        $subs->inactive()->size , " as inactive";
   });
   $ua->max_redirects(5)->connect_timeout(30);
+  my $max_concurrent = 6;
+  my $active = 0;
   say "Will check $total feeds";
-
-  $self->subscriptions->each(sub {
+  $subs->each(sub {
     my $sub = shift;
     my $url = $sub->{xmlUrl};
+
     my $end = $delay->begin(0);
     $ua->get($url => sub {
       my ($ua, $tx) = @_;
@@ -132,7 +127,6 @@ sub cleanup_reader_fields {
 }
 
 sub load_rss {
-{
 	my ($self, $rss_file) = @_;
   my $rss_str  = decode 'UTF-8', (ref $rss_file) ? $rss_file->slurp : slurp $rss_file;
   my $d = Mojo::DOM->new($rss_str);
@@ -155,7 +149,7 @@ sub load_rss {
 		if ($h{$old}) {
 			$h{$new} = delete $h{$old};
 		}
-    {
+    }
 		say Mojo::JSON->new->encode(\%h);
 	}
 	# get channel properties:

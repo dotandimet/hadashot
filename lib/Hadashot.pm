@@ -8,10 +8,20 @@ sub startup {
 
   # Documentation browser under "/perldoc"
   $self->plugin('PODRenderer');
+  $self->plugin('Config', default => {
+      db_type => 'mango',
+      db_connect => 'mongodb://localhost:27017',
+      db_name => 'hadashot'
+  });
 
   # our backend functionality:
 
-  $self->helper(backend => sub { state $bak = Hadashot::Backend->new(ua => $self->ua) });
+  $self->helper( backend => sub {
+    state $bak = Hadashot::Backend->new(
+      ua => $self->ua,
+      db => Mango->new($self->config->{'db_connect'})->db($self->config->{'db_name'})
+      ); 
+    } );
 
   # Router
   my $r = $self->routes;
