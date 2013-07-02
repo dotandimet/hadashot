@@ -11,13 +11,15 @@ use HTTP::Date;
 use Hadashot::Backend::Subscriptions;
 
 has subscriptions => sub { Hadashot::Backend::Subscriptions->new(); };
+has items => sub { Hadashot::Backend::Items->new(); };
 has db => sub { Mango->new('mongodb://localhost:27017')->db('hadashot'); };
 has json => sub { Mojo::JSON->new(); };
 has ua => sub { Mojo::UserAgent->new(); };
+has feeds => sub { $_[0]->db()->collection('subs') };
+has items => sub { $_[0]->db()->collection('items') };
 
 sub parse_opml {
   my ($self, $opml_file) = @_;
-  my $this = (ref $self) ? $self : Hadashot::Backend->new();
   my $opml_str  = decode 'UTF-8', (ref $opml_file) ? $opml_file->slurp : slurp $opml_file;
   my $d = Mojo::DOM->new($opml_str);
   my (%subscriptions, %categories);
@@ -39,24 +41,20 @@ sub parse_opml {
 		push @{$subscriptions{$rss}{'categories'}}, $cat;
 	}
   }
-  $this->subscriptions( Hadashot::Backend::Subscriptions->new(values %subscriptions) );
-  return $this;
+  return (values %subscriptions);
 }
 
 sub load_subs {
   my ($self) = @_;
-  my $coll = $self->db()->collection('subs');
-  my $subs = $coll->find()->all;
+  my $subs = $self->feeds->find()->all;
   $self->subscriptions(Hadashot::Backend::Subscriptions->new(@$subs));
 }
 
 sub annotate_bidi {
-  my ($self) = @_;
-  for my $sub ($self->subscriptions->each) {
-     my $is_bidi = ($sub->{title} =~ /\p{Hebrew}+/);
-     if ($is_bidi) {
- 	$sub->{'rtl'} = 1;
-     }
+  my ($self, $sub ) = @_;
+  my $is_bidi = ($sub->{title} =~ /\p{Hebrew}+/);
+  if ($is_bidi) {
+ 	  $sub->{'rtl'} = 1;
   }
 }
 
@@ -155,4 +153,5 @@ sub load_rss {
 	# get channel properties:
 	#foreach my $k (qw(
 }
+
 1;

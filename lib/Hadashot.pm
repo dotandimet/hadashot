@@ -11,7 +11,10 @@ sub startup {
   $self->plugin('Config', default => {
       db_type => 'mango',
       db_connect => 'mongodb://localhost:27017',
-      db_name => 'hadashot'
+      db_name => 'hadashot',
+      db_feeds => 'subs',
+      db_items => 'items',
+      db_raw_feeds => 'raw_feeds'
   });
 
   # our backend functionality:
@@ -19,7 +22,8 @@ sub startup {
   $self->helper( backend => sub {
     state $bak = Hadashot::Backend->new(
       ua => $self->ua,
-      db => Mango->new($self->config->{'db_connect'})->db($self->config->{'db_name'})
+      db => Mango->new($self->config->{'db_connect'})->db($self->config->{'db_name'}),
+
       ); 
     } );
 

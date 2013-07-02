@@ -11,12 +11,12 @@ sub import {
 	$out->annotate_bidi(); # set rtl flag
      my $coll = $out->db()->collection('subs');
      for my $sub ($out->subscriptions->each) {
-     my $doc = $coll->find_one({xmlUrl => $sub->{xmlUrl}});
+     my $doc = $self->backend->feeds->find_one({xmlUrl => $sub->{xmlUrl}});
      if ($doc) {
           print $sub->{title}, " already exists in db with id ", $doc->{_id}, "\n";
      }
      else {
-      my $oid = $coll->insert($sub);
+      my $oid = $self->backend->feeds->insert($sub);
             if ($oid) {
               print $sub->{title}, " stored with id $oid\n";
             }
