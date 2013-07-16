@@ -11,7 +11,7 @@ use HTTP::Date;
 use Hadashot::Backend::Subscriptions;
 
 has subscriptions => sub { Hadashot::Backend::Subscriptions->new(); };
-has items => sub { Hadashot::Backend::Items->new(); };
+# has items => sub { Hadashot::Backend::Items->new(); };
 has db => sub { Mango->new('mongodb://localhost:27017')->db('hadashot'); };
 has json => sub { Mojo::JSON->new(); };
 has ua => sub { Mojo::UserAgent->new(); };
@@ -82,11 +82,12 @@ sub fetch_subscriptions {
       my ($ua, $tx) = @_;
       if (my $res = $tx->success) {
         if ($tx->res->code == 200) {
-        say $url, " :-) ", $tx->res->code
-          , " ",
-          $tx->res->headers->last_modified,
-          " ", $tx->res->headers->etag;
-        #  $self->load_rss($res->content->asset);
+        say $url, " :-) ", $tx->res->code;
+				my $headers = $tx->res->headers;
+				my ( $last_modified, $etag ) =
+				( $headers->last_modified, $headers->etag );
+
+          $self->load_rss($res->content->asset);
 					say "=====";	
 					say $tx->res->body;
 					say "=====";	
