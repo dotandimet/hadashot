@@ -1,6 +1,6 @@
 package Hadashot::Backend;
+use v5.016;
 use Mojo::Base -base;
-
 use Mojo::DOM;
 use Mojo::JSON;
 use Mojo::Util qw(decode slurp);
@@ -11,7 +11,7 @@ use HTTP::Date;
 use Hadashot::Backend::Subscriptions;
 
 has subscriptions => sub { Hadashot::Backend::Subscriptions->new(); };
-has items => sub { Hadashot::Backend::Items->new(); };
+# has items => sub { Hadashot::Backend::Items->new(); };
 has db => sub { Mango->new('mongodb://localhost:27017')->db('hadashot'); };
 has json => sub { Mojo::JSON->new(); };
 has ua => sub { Mojo::UserAgent->new(); };
@@ -46,6 +46,7 @@ sub parse_opml {
 
 sub load_subs {
   my ($self) = @_;
+  $DB::single=1;
   my $subs = $self->feeds->find()->all;
   $self->subscriptions(Hadashot::Backend::Subscriptions->new(@$subs));
 }
@@ -61,57 +62,69 @@ sub annotate_bidi {
 sub fetch_subscriptions {
   my ($self, $check_all) = @_;
   my $ua = $self->ua;
-  my ($hits, $errs) = (0,0);
-  my $subs = (defined $check_all) ? $self->subscriptions : $self->subscriptions->active() ; 
+  $ua->max_redirects(5)->connect_timeout(30);
+  my $subs = (defined $check_all) ? $self->subscriptions : $self->subscriptions->active(); 
   my $total = $subs->size;
-  my $delay = Mojo::IOLoop->delay(sub {
-    say "Done - got $hits hits and $errs errors out of $total feeds";
+  say "Will check $total feeds";
+  $self->process_feeds($subs, sub {
+    my $self = shift;
+    my $subs = $self->subscriptions;
     say "Marked ", $subs->active()->size, " feeds as active and ", 
         $subs->inactive()->size , " as inactive";
   });
-  $ua->max_redirects(5)->connect_timeout(30);
-  my $max_concurrent = 6;
-  my $active = 0;
-  say "Will check $total feeds";
-  $subs->each(sub {
-    my $sub = shift;
-    my $url = $sub->{xmlUrl};
+}
 
+sub process_feeds {
+  my ($self, $subs, $cb) = @_;
+  state $delay = Mojo::IOLoop->delay(sub { say ((@$subs) ? "Ended before queue exhausted! " : "Done"); $self->$cb; });
+  state $active = 0;
+  my $max_concurrent = 8;
+  while ( $active < $max_concurrent and my $sub = shift @$subs ) {
+    my $url = $sub->{xmlUrl};
+    $active++;
     my $end = $delay->begin(0);
-    $ua->get($url => sub {
-      my ($ua, $tx) = @_;
-      if (my $res = $tx->success) {
-        if ($tx->res->code == 200) {
-        say $url, " :-) ", $tx->res->code
-          , " ",
-          $tx->res->headers->last_modified,
-          " ", $tx->res->headers->etag;
-        #  $self->load_rss($res->content->asset);
-					say "=====";	
-					say $tx->res->body;
-					say "=====";	
-					$sub->{'active'} = 1;
-        }
-				else { say "$url :-( " , $tx->res->code; };
-        $hits++;
-      }
-      else {
-        my ($err, $code) = $tx->error;
-        say $url, " :-( ", ( $code ? "$code response $err" : "connection error: $err" );
-        $errs++;
-				$sub->{'active'} = 0;
-      }
+    $self->ua->get($url => sub {
+      $active--;
+      $self->process_feed($sub, @_);
+      $self->process_feeds($subs);
       $end->();
-  #    $delay->end($tx->res->dom->at('description')->text);
     });
-  });
+  };
   $delay->wait unless Mojo::IOLoop->is_running;
+}
+
+sub process_feed {
+  my ($self, $sub, $ua, $tx) = @_;
+  my $url = $sub->{xmlUrl};
+  if (my $res = $tx->success) {
+    if ($tx->res->code == 200) {
+      my $last_modified = $tx->res->headers->last_modified || '';
+      my $etag = $tx->res->headers->etag || '';
+      say $url, " :-) ", $tx->res->code
+        , " ", $last_modified, " ", $etag;
+      my $items = $self->parse_rss($res->content->asset,
+      sub {
+        my ($self, $item) = @_;
+        $self->items->update($item, { upsert => 1 });
+      });
+      say "=====";	
+      say $tx->res->body;
+      say "=====";	
+      $sub->{'active'} = 1;
+    }
+    else { say "$url :-( " , $tx->res->code; };
+  }
+  else {
+    my ($err, $code) = $tx->error;
+    say $url, " :-( ", ( $code ? "$code response $err" : "connection error: $err" );
+    $sub->{'active'} = 0;
+  }
 }
 
 sub parse_json_collection {
 	my ($self, $file) = @_;
 	my $str = slurp $file;
-	my $obj = Mojo::JSON->new->decode($str);
+	my $obj = $self->json->decode($str);
 	my $items = delete $obj->{'items'};
 	foreach my $item (@$items) {
 		
@@ -124,12 +137,13 @@ sub cleanup_reader_fields {
 	
 }
 
-sub load_rss {
-	my ($self, $rss_file) = @_;
+sub parse_rss {
+	my ($self, $rss_file, $cb) = @_;
   my $rss_str  = decode 'UTF-8', (ref $rss_file) ? $rss_file->slurp : slurp $rss_file;
   my $d = Mojo::DOM->new($rss_str);
 	my $items = $d->find('item');
 	my $entries = $d->find('entry'); # Atom
+  my $res = [];
 	foreach my $item ($items->each, $entries->each) {
 		my %h;
 		foreach my $k (qw(title link summary content description content\:encoded pubDate published updated dc\:date)) {
@@ -148,10 +162,14 @@ sub load_rss {
 			$h{$new} = delete $h{$old};
 		}
     }
-		say Mojo::JSON->new->encode(\%h);
+     if ($cb) {
+        $self->$cb(\%h);
+     }
+     push @$res, \%h;
 	}
 	# get channel properties:
 	#foreach my $k (qw(
+  return $res;
 }
 
 1;
