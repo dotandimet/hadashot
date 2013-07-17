@@ -8,10 +8,7 @@ use Mojo::Collection;
 use Mojo::IOLoop;
 use Mango;
 use HTTP::Date;
-use Hadashot::Backend::Subscriptions;
 
-has subscriptions => sub { Hadashot::Backend::Subscriptions->new(); };
-# has items => sub { Hadashot::Backend::Items->new(); };
 has db => sub { Mango->new('mongodb://localhost:27017')->db('hadashot'); };
 has json => sub { Mojo::JSON->new(); };
 has ua => sub { Mojo::UserAgent->new(); };
@@ -44,33 +41,33 @@ sub parse_opml {
   return (values %subscriptions);
 }
 
-sub load_subs {
-  my ($self) = @_;
-  $DB::single=1;
-  my $subs = $self->feeds->find()->all;
-  $self->subscriptions(Hadashot::Backend::Subscriptions->new(@$subs));
-}
 
-sub annotate_bidi {
-  my ($self, $sub ) = @_;
-  my $is_bidi = ($sub->{title} =~ /\p{Hebrew}+/);
-  if ($is_bidi) {
- 	  $sub->{'rtl'} = 1;
-  }
+sub get_direction {
+  my ($self, $text ) = @_;
+  #my $is_bidi = ($text =~ /\p{Hebrew}+/);
+  return ($text =~ /\p{Bidi_Class:R}+/) : 'rtl' : 'ltr';
 }
 
 sub fetch_subscriptions {
-  my ($self, $check_all) = @_;
+  my ($self, $check_all, $limit) = @_;
   my $ua = $self->ua;
   $ua->max_redirects(5)->connect_timeout(30);
-  my $subs = (defined $check_all) ? $self->subscriptions : $self->subscriptions->active(); 
+  my $subs;
+  if ($check_all) {
+    $subs = Mojo::Collection->new($self->feeds->find()->all());
+  }
+  else {
+    $subs = Mojo::Collection->new($self->feeds->find({ "active" => 1 })->all());
+  }
+  $subs = $subs->shuffle;
+  $subs = (defined $limit && $limit > 0 && $limit <= $subs->size) ? $subs->slice(0..$limit) : $subs;
+  my $all = Mojo::Collection->new(@$subs);
   my $total = $subs->size;
   say "Will check $total feeds";
   $self->process_feeds($subs, sub {
     my $self = shift;
-    my $subs = $self->subscriptions;
-    say "Marked ", $subs->active()->size, " feeds as active and ", 
-        $subs->inactive()->size , " as inactive";
+    say "Marked ", $all->active()->size, " feeds as active and ", 
+        $all->inactive()->size , " as inactive";
   });
 }
 
@@ -98,18 +95,28 @@ sub process_feed {
   my $url = $sub->{xmlUrl};
   if (my $res = $tx->success) {
     if ($tx->res->code == 200) {
-      my $last_modified = $tx->res->headers->last_modified || '';
-      my $etag = $tx->res->headers->etag || '';
+      my $headers = $tx->res->headers;
+      my ($last_modified, $etag) = ($headers->last_modified, $headers->etag);
       say $url, " :-) ", $tx->res->code
-        , " ", $last_modified, " ", $etag;
+        , " ", ($last_modified // ''), " ", ($etag // '');
+      if ($last_modified) {
+        $sub->{last_modified} = $last_modified;
+      }
+      if ($etag) {
+        $sub->{etag} = $etag;
+      }
       my $items = $self->parse_rss($res->content->asset,
       sub {
         my ($self, $item) = @_;
-        $self->items->update($item, { upsert => 1 });
+        $item->{
+        my ($link, $title, $content) = map { $item->{$_} } (qw(link title content));
+        die "No link for item ", $item->{_raw}, "\n" unless ($link);
+        say "Saving item with $link - $title";
+        $self->items->update({ link => $link }, $item, { upsert => 1 });
       });
-      say "=====";	
-      say $tx->res->body;
-      say "=====";	
+      # say "=====";	
+      # say $tx->res->body;
+      # say "=====";	
       $sub->{'active'} = 1;
     }
     else { say "$url :-( " , $tx->res->code; };
@@ -146,10 +153,13 @@ sub parse_rss {
   my $res = [];
 	foreach my $item ($items->each, $entries->each) {
 		my %h;
-		foreach my $k (qw(title link summary content description content\:encoded pubDate published updated dc\:date)) {
+		foreach my $k (qw(title link id summary content description content\:encoded pubDate published updated dc\:date)) {
 			my $p = $item->at($k);
 			if ($p) {
 				$h{$k} = $p->text;
+        if ($k eq 'link' && defined $p->attrs->{'href'}) { # special-casing Atom... :(
+          $h{$k} = $p->attrs->{'href'};
+        }
 				if ($k eq 'pubDate' || $k eq 'published' || $k eq 'updated' || $k eq 'dc\:date') {
 					$h{$k} = str2time($h{$k});
 				}
@@ -162,6 +172,7 @@ sub parse_rss {
 			$h{$new} = delete $h{$old};
 		}
     }
+    $h{"_raw"} = $item->to_xml;
      if ($cb) {
         $self->$cb(\%h);
      }

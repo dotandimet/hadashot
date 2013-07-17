@@ -8,7 +8,7 @@
 % if ($subs) { 
 <dl>
 % for my $item ($subs->subscriptions->each) {
-% my ($dir, $align) = ($item->{rtl}) ? ('rtl', 'right') : ('ltr', 'left');
+% my ($dir, $align) = ($item->{direction} eq 'rtl') ? ('rtl', 'right') : ('ltr', 'left');
 %= tag 'dt', align => $align => begin
 %= link_to $item->{xmlUrl} => begin %><%= tag 'i', class => 'icon-rss', '' %> rss<% end 
 %= link_to $item->{htmlUrl}, dir => $dir => begin %><%= $item->{title} %><% end 
