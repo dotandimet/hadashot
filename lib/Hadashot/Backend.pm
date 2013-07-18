@@ -45,7 +45,7 @@ sub parse_opml {
 sub get_direction {
   my ($self, $text ) = @_;
   #my $is_bidi = ($text =~ /\p{Hebrew}+/);
-  return ($text =~ /\p{Bidi_Class:R}+/) : 'rtl' : 'ltr';
+  return ($text =~ /\p{Bidi_Class:R}+/) ? 'rtl' : 'ltr';
 }
 
 sub fetch_subscriptions {
@@ -108,7 +108,7 @@ sub process_feed {
       my $items = $self->parse_rss($res->content->asset,
       sub {
         my ($self, $item) = @_;
-        $item->{
+    #    $item->{
         my ($link, $title, $content) = map { $item->{$_} } (qw(link title content));
         die "No link for item ", $item->{_raw}, "\n" unless ($link);
         say "Saving item with $link - $title";
