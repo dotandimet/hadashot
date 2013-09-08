@@ -5,10 +5,9 @@ use Mojo::Base 'Mojolicious::Controller';
 
 sub import {
     my $self = shift;
-    my @subs;
+    my (@subs, @loaded, @exist);
     if ( my $opml_file = $self->param('opmlfile') ) {
         @subs = $self->backend->parse_opml( $opml_file->asset );
-        my (@loaded, @exist);
         for my $sub (@subs) {
             $sub->{direction} = $self->backend->get_direction($sub->{'title'}); # set rtl flag
             my $doc =
@@ -25,13 +24,15 @@ sub import {
             }
         }
     }
-    $self->render( exist => \@exist, loaded => \@loaded );
+    $self->render( subs => [@loaded, @exist] );
 }
 
 sub blogroll {
   my ($self) = @_;
-  my $subs = $self->backend->feeds->find()->all();
-  $self->render( subs => $subs , template => 'settings/import' );
+  my $subs = undef;
+  $subs = $self->backend->feeds->find()->all();
+  
+  $self->render( subs => $subs );
 }
 
 1;

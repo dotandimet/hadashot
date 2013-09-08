@@ -1,5 +1,5 @@
 %layout 'bootstrap';
-% title "Import your subs";
+% title "Look, your subs!";
 %= form_for '/settings/import' => (method => 'post', enctype => 'multipart/form-data') => begin
 %= file_field 'opmlfile' => multiple => 'true'
 %= submit_button 'Import', 'class' => 'btn'
@@ -7,8 +7,19 @@
 <div>
 % if ($subs) { 
 <dl>
-% for my $item ($subs->subscriptions->each) {
-% my ($dir, $align) = ($item->{direction} eq 'rtl') ? ('rtl', 'right') : ('ltr', 'left');
+% for my $item (@$subs) {
+% my ($dir, $align) = ($item->{rtl}) ? ('rtl', 'right') : ('ltr', 'left');
+<!--
+<dt align="<%= $align %>"><a href="<%= $item->{xmlUrl} %>"><i class="icon-rss"></i> rss</a>
+<a dir="<%= $dir %>" href="<%= $item->{htmlUrl} %>"><%== $item->{title} %></a>
+</dt>
+<dd><b>Categories</b>
+%= join q{, }, sort @{ $item->{categories} || [] };
+<div class="well">
+%= dumper $item;
+</div>
+</dd>
+ -->
 %= tag 'dt', align => $align => begin
 %= link_to $item->{xmlUrl} => begin %><%= tag 'i', class => 'icon-rss', '' %> rss<% end 
 %= link_to $item->{htmlUrl}, dir => $dir => begin %><%= $item->{title} %><% end 

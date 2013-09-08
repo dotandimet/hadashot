@@ -4,7 +4,7 @@ use Mojo::Base -base;
 use Mojo::DOM;
 use Mojo::JSON;
 use Mojo::Util qw(decode slurp);
-use Mojo::Collection;
+use List::Util qw(shuffle);
 use Mojo::IOLoop;
 use Mango;
 use HTTP::Date;
@@ -21,10 +21,10 @@ sub parse_opml {
   my $d = Mojo::DOM->new($opml_str);
   my (%subscriptions, %categories);
   for my $item ($d->find(q{outline})->each) {
-	my $node = $item->attrs;
+	my $node = $item->attr;
 	if (!defined $node->{type} || $node->{type} ne 'rss') {
 	  my $cat = $node->{title} || $node->{text};
-	  $categories{$cat} = $item->children->pluck('attrs', 'xmlUrl');
+	  $categories{$cat} = $item->children->pluck('attr', 'xmlUrl');
 	}
 	else { # file by RSS URL:
 	  $subscriptions{ $node->{xmlUrl} } = $node;
@@ -54,20 +54,21 @@ sub fetch_subscriptions {
   $ua->max_redirects(5)->connect_timeout(30);
   my $subs;
   if ($check_all) {
-    $subs = Mojo::Collection->new($self->feeds->find()->all());
+    $subs = $self->feeds->find()->all();
   }
   else {
-    $subs = Mojo::Collection->new($self->feeds->find({ "active" => 1 })->all());
+    $subs = $self->feeds->find({ "active" => 1 })->all();
   }
-  $subs = $subs->shuffle;
-  $subs = (defined $limit && $limit > 0 && $limit <= $subs->size) ? $subs->slice(0..$limit) : $subs;
-  my $all = Mojo::Collection->new(@$subs);
-  my $total = $subs->size;
+  $subs = [ shuffle @$subs ];
+  $subs = (defined $limit && $limit > 0 && $limit <= $#$subs) ?  @$subs[0..$limit] : $subs;
+  my @all = @$subs;
+  my $total = scalar @$subs;
   say "Will check $total feeds";
   $self->process_feeds($subs, sub {
     my $self = shift;
-    say "Marked ", $all->active()->size, " feeds as active and ", 
-        $all->inactive()->size , " as inactive";
+    my $inactive = grep { ! $_->{active} } @all;
+    my $active = grep { $_->{active} } @all; 
+    say "Marked $active feeds as active and $inactive as inactive";
   });
 }
 
@@ -112,6 +113,9 @@ sub process_feed {
         my ($link, $title, $content) = map { $item->{$_} } (qw(link title content));
         die "No link for item ", $item->{_raw}, "\n" unless ($link);
         say "Saving item with $link - $title";
+        $item->{'origin'} = $url; # save our source feed...
+        # convert dates to Mongodb BSON ?
+        # for (qw(published updated)) { $item->{$_} = bson_date $item->{$_} * 1000 }
         $self->items->update({ link => $link }, $item, { upsert => 1 });
       });
       # say "=====";	
@@ -126,6 +130,7 @@ sub process_feed {
     say $url, " :-( ", ( $code ? "$code response $err" : "connection error: $err" );
     $sub->{'active'} = 0;
   }
+  $self->feeds->update({ _id => $sub->{'_id'} }, $sub);
 }
 
 sub parse_json_collection {
@@ -153,22 +158,30 @@ sub parse_rss {
   my $res = [];
 	foreach my $item ($items->each, $entries->each) {
 		my %h;
-		foreach my $k (qw(title link id summary content description content\:encoded pubDate published updated dc\:date)) {
+		foreach my $k (qw(title id summary content description content\:encoded pubDate published updated dc\:date)) {
 			my $p = $item->at($k);
 			if ($p) {
 				$h{$k} = $p->text;
-        if ($k eq 'link' && defined $p->attrs->{'href'}) { # special-casing Atom... :(
-          $h{$k} = $p->attrs->{'href'};
-        }
 				if ($k eq 'pubDate' || $k eq 'published' || $k eq 'updated' || $k eq 'dc\:date') {
 					$h{$k} = str2time($h{$k});
 				}
 			}
 		}
+    # let's handle links seperately, because ATOM loves these buggers:
+    $item->find('link')->each( sub {
+       if (not defined $_[0]->attr('href')) {
+        $h{'link'} = $_[0]->text; # simple link
+       }
+       elsif ( $_[0]->attr('href') && $_[0]->attr('rel') && $_[0]->attr('rel')
+       eq 'alternate' ) {
+          $h{'link'} = $_[0]->attr('href');
+       }
+    });
+    #
 		# normalize fields:
-		my %replace = ( 'content\:encoded' => 'content', 'pubDate' => 'published', 'dc\:date' => 'published' );
+		my %replace = ( 'content\:encoded' => 'content', 'pubDate' => 'published', 'dc\:date' => 'published', 'summary' => 'description' );
 		while (my ($old, $new) = each %replace) {
-		if ($h{$old}) {
+		if ($h{$old} && ! $h{$new}) {
 			$h{$new} = delete $h{$old};
 		}
     }
