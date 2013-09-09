@@ -14,9 +14,10 @@ sub startup {
       db_name => 'hadashot',
       db_feeds => 'subs',
       db_items => 'items',
-      db_raw_feeds => 'raw_feeds'
+      db_raw_feeds => 'raw_feeds',
+      secret => 'zasdcwdw2d'
   });
-
+  $self->secret($self->config->{'secret'});
   # our backend functionality:
 
   $self->helper( backend => sub {
@@ -28,12 +29,13 @@ sub startup {
       ); 
     } );
 
+  $self->helper( todate => sub { Hadashot::Backend::time2str($_[1]); } );
+
   # Router
   my $r = $self->routes;
 
   # Normal route to controller
-  $r->any('/(:controller)/(:action)')->to(controller => 'settings', action =>
-  'import');
+  $r->any('/(:controller)/(:action)')->to(controller => 'settings', action => 'blogroll');
 #  $r->get('/')->to('example#welcome');
 #  $r->any('/import')->to('settings#import');
 #	$r->get('/bookmark/add')->to('bookmark#add');

@@ -4,14 +4,11 @@ use Mojo::Base -base;
 use Mojo::DOM;
 use Mojo::JSON;
 use Mojo::Util qw(decode slurp);
-use Mojo::Collection;
+use List::Util qw(shuffle);
 use Mojo::IOLoop;
 use Mango;
 use HTTP::Date;
-use Hadashot::Backend::Subscriptions;
 
-has subscriptions => sub { Hadashot::Backend::Subscriptions->new(); };
-# has items => sub { Hadashot::Backend::Items->new(); };
 has db => sub { Mango->new('mongodb://localhost:27017')->db('hadashot'); };
 has json => sub { Mojo::JSON->new(); };
 has ua => sub { Mojo::UserAgent->new(); };
@@ -24,10 +21,10 @@ sub parse_opml {
   my $d = Mojo::DOM->new($opml_str);
   my (%subscriptions, %categories);
   for my $item ($d->find(q{outline})->each) {
-	my $node = $item->attrs;
+	my $node = $item->attr;
 	if (!defined $node->{type} || $node->{type} ne 'rss') {
 	  my $cat = $node->{title} || $node->{text};
-	  $categories{$cat} = $item->children->pluck('attrs', 'xmlUrl');
+	  $categories{$cat} = $item->children->pluck('attr', 'xmlUrl');
 	}
 	else { # file by RSS URL:
 	  $subscriptions{ $node->{xmlUrl} } = $node;
@@ -44,33 +41,34 @@ sub parse_opml {
   return (values %subscriptions);
 }
 
-sub load_subs {
-  my ($self) = @_;
-  $DB::single=1;
-  my $subs = $self->feeds->find()->all;
-  $self->subscriptions(Hadashot::Backend::Subscriptions->new(@$subs));
-}
 
-sub annotate_bidi {
-  my ($self, $sub ) = @_;
-  my $is_bidi = ($sub->{title} =~ /\p{Hebrew}+/);
-  if ($is_bidi) {
- 	  $sub->{'rtl'} = 1;
-  }
+sub get_direction {
+  my ($self, $text ) = @_;
+  #my $is_bidi = ($text =~ /\p{Hebrew}+/);
+  return ($text =~ /\p{Bidi_Class:R}+/) ? 'rtl' : 'ltr';
 }
 
 sub fetch_subscriptions {
-  my ($self, $check_all) = @_;
+  my ($self, $check_all, $limit) = @_;
   my $ua = $self->ua;
   $ua->max_redirects(5)->connect_timeout(30);
-  my $subs = (defined $check_all) ? $self->subscriptions : $self->subscriptions->active(); 
-  my $total = $subs->size;
+  my $subs;
+  if ($check_all) {
+    $subs = $self->feeds->find()->all();
+  }
+  else {
+    $subs = $self->feeds->find({ "active" => 1 })->all();
+  }
+  $subs = [ shuffle @$subs ];
+  $subs = (defined $limit && $limit > 0 && $limit <= $#$subs) ?  @$subs[0..$limit] : $subs;
+  my @all = @$subs;
+  my $total = scalar @$subs;
   say "Will check $total feeds";
   $self->process_feeds($subs, sub {
     my $self = shift;
-    my $subs = $self->subscriptions;
-    say "Marked ", $subs->active()->size, " feeds as active and ", 
-        $subs->inactive()->size , " as inactive";
+    my $inactive = grep { ! $_->{active} } @all;
+    my $active = grep { $_->{active} } @all; 
+    say "Marked $active feeds as active and $inactive as inactive";
   });
 }
 
@@ -98,18 +96,31 @@ sub process_feed {
   my $url = $sub->{xmlUrl};
   if (my $res = $tx->success) {
     if ($tx->res->code == 200) {
-      my $last_modified = $tx->res->headers->last_modified || '';
-      my $etag = $tx->res->headers->etag || '';
+      my $headers = $tx->res->headers;
+      my ($last_modified, $etag) = ($headers->last_modified, $headers->etag);
       say $url, " :-) ", $tx->res->code
-        , " ", $last_modified, " ", $etag;
+        , " ", ($last_modified // ''), " ", ($etag // '');
+      if ($last_modified) {
+        $sub->{last_modified} = $last_modified;
+      }
+      if ($etag) {
+        $sub->{etag} = $etag;
+      }
       my $items = $self->parse_rss($res->content->asset,
       sub {
         my ($self, $item) = @_;
-        $self->items->update($item, { upsert => 1 });
+    #    $item->{
+        my ($link, $title, $content) = map { $item->{$_} } (qw(link title content));
+        die "No link for item ", $item->{_raw}, "\n" unless ($link);
+        say "Saving item with $link - $title";
+        $item->{'origin'} = $url; # save our source feed...
+        # convert dates to Mongodb BSON ?
+        # for (qw(published updated)) { $item->{$_} = bson_date $item->{$_} * 1000 }
+        $self->items->update({ link => $link }, $item, { upsert => 1 });
       });
-      say "=====";	
-      say $tx->res->body;
-      say "=====";	
+      # say "=====";	
+      # say $tx->res->body;
+      # say "=====";	
       $sub->{'active'} = 1;
     }
     else { say "$url :-( " , $tx->res->code; };
@@ -119,6 +130,7 @@ sub process_feed {
     say $url, " :-( ", ( $code ? "$code response $err" : "connection error: $err" );
     $sub->{'active'} = 0;
   }
+  $self->feeds->update({ _id => $sub->{'_id'} }, $sub);
 }
 
 sub parse_json_collection {
@@ -146,7 +158,7 @@ sub parse_rss {
   my $res = [];
 	foreach my $item ($items->each, $entries->each) {
 		my %h;
-		foreach my $k (qw(title link summary content description content\:encoded pubDate published updated dc\:date)) {
+		foreach my $k (qw(title id summary content description content\:encoded pubDate published updated dc\:date)) {
 			my $p = $item->at($k);
 			if ($p) {
 				$h{$k} = $p->text;
@@ -155,13 +167,25 @@ sub parse_rss {
 				}
 			}
 		}
+    # let's handle links seperately, because ATOM loves these buggers:
+    $item->find('link')->each( sub {
+       if (not defined $_[0]->attr('href')) {
+        $h{'link'} = $_[0]->text; # simple link
+       }
+       elsif ( $_[0]->attr('href') && $_[0]->attr('rel') && $_[0]->attr('rel')
+       eq 'alternate' ) {
+          $h{'link'} = $_[0]->attr('href');
+       }
+    });
+    #
 		# normalize fields:
-		my %replace = ( 'content\:encoded' => 'content', 'pubDate' => 'published', 'dc\:date' => 'published' );
+		my %replace = ( 'content\:encoded' => 'content', 'pubDate' => 'published', 'dc\:date' => 'published', 'summary' => 'description' );
 		while (my ($old, $new) = each %replace) {
-		if ($h{$old}) {
+		if ($h{$old} && ! $h{$new}) {
 			$h{$new} = delete $h{$old};
 		}
     }
+    $h{"_raw"} = $item->to_xml;
      if ($cb) {
         $self->$cb(\%h);
      }

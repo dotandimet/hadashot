@@ -1,0 +1,20 @@
+%layout 'bootstrap';
+% title "Parse the whah now?";
+
+<h1>You Parse this with chopsticks or something?</h1>
+
+% if ($error) {
+ <div class="error"> <%= $error %> </div>
+% } else {
+<table class="table">
+<caption>Item</caption>
+<tr><th>Field</th><th>Item Value</th><th>Parsed Value</th></tr>
+% foreach my $k (sort { length $item->{$a} <=> length $item->{$b} } keys %$item) {
+<tr><td><%= $k %></td><td><%= $item->{$k} %></td><td><%= $parse->{$k} %></td></tr>
+% }
+</table>
+% }
+
+
+
+
