@@ -15,6 +15,13 @@ has ua => sub { Mojo::UserAgent->new(); };
 has feeds => sub { $_[0]->db()->collection('subs') };
 has items => sub { $_[0]->db()->collection('items') };
 
+sub reset { # wanna drop all your data? cool.
+	my ($self) = @_;
+	$self->feeds->drop();
+	$self->items->drop();
+	$self->log->info('dropped all subs and items');
+}
+
 sub parse_opml {
   my ($self, $opml_file) = @_;
   my $opml_str  = decode 'UTF-8', (ref $opml_file) ? $opml_file->slurp : slurp $opml_file;
