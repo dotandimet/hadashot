@@ -1,0 +1,12 @@
+% layout 'bootstrap';
+% title 'Now with javascript';
+<div ng-app>
+<div ng-controller="hadashot.subsCtrl">
+<div ng-repeat="item in subs">
+<a href="{{item.xmlUrl}}"><i class="icon-rss"></i> rss</a>
+<a href="{{item.htmlUrl}}" dir="ltr">{{item.title}}</a>
+<strong>Categories</stong>
+<span ng-repeat="cat in item.categories">{{cat}} </span> 
+</div>
+</div>
+</div>
