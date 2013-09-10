@@ -31,8 +31,13 @@ sub blogroll {
   my ($self) = @_;
   my $subs = undef;
   $subs = $self->backend->feeds->find()->all();
-  
+  if ($self->param('js')) {
+    $self->render(json => { subs => $subs } );
+  }
+  else {
   $self->render( subs => $subs );
+  }
 }
+
 
 1;
