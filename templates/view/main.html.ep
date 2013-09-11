@@ -1,12 +1,23 @@
 % layout 'bootstrap';
 % title 'Now with javascript';
-<div ng-app>
-<div ng-controller="hadashot.subsCtrl">
-<div ng-repeat="item in subs">
-<a href="{{item.xmlUrl}}"><i class="icon-rss"></i> rss</a>
-<a href="{{item.htmlUrl}}" dir="ltr">{{item.title}}</a>
-<strong>Categories</stong>
-<span ng-repeat="cat in item.categories">{{cat}} </span> 
+<script type="text/html" id="blogroll_tmpl">
+<div>
+<a href="{{=xmlUrl}}"><i class="icon-rss"></i> rss</a>
+<a href="{{=htmlUrl}}" dir="ltr">{{=title}}</a>
+<a href="/feed/river?src={{=xmlUrl}}" dir="ltr">go</a>
 </div>
+</script>
+
+<div id="sublist">
 </div>
-</div>
+<script language="javascript">
+  var f = 0;
+  document.onreadystatechange = 
+  function(){
+    if (f == 0) {  
+    hadashot.subsLoad('#sublist', 'blogroll_tmpl', '/settings/blogroll/?js=1');
+    f = 1;
+    }
+   };
+</script>
+

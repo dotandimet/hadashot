@@ -49,7 +49,7 @@ sub parse_opml {
   }
   # assign categories
   for my $cat (keys %categories) {
-	print "category $cat\n";
+	$self->log->info( "category $cat\n" );
 	for my $rss ($categories{$cat}->each) {
 		$subscriptions{$rss}{'categories'} ||= [];
 		push @{$subscriptions{$rss}{'categories'}}, $cat;
@@ -80,18 +80,18 @@ sub fetch_subscriptions {
   $subs = (defined $limit && $limit > 0 && $limit <= $#$subs) ?  @$subs[0..$limit] : $subs;
   my @all = @$subs;
   my $total = scalar @$subs;
-  say "Will check $total feeds";
+  $self->log->info( "Will check $total feeds" );
   $self->process_feeds($subs, sub {
     my $self = shift;
     my $inactive = grep { ! $_->{active} } @all;
     my $active = grep { $_->{active} } @all; 
-    say "Marked $active feeds as active and $inactive as inactive";
+    $self->log->info( "Marked $active feeds as active and $inactive as inactive" );
   });
 }
 
 sub process_feeds {
   my ($self, $subs, $cb) = @_;
-  state $delay = Mojo::IOLoop->delay(sub { say ((@$subs) ? "Ended before queue exhausted! " : "Done"); $self->$cb; });
+  state $delay = Mojo::IOLoop->delay(sub { $self->log->info((@$subs) ? "Ended before queue exhausted! " : "Done"); $self->$cb; });
   state $active = 0;
   my $max_concurrent = 8;
   while ( $active < $max_concurrent and my $sub = shift @$subs ) {
@@ -115,8 +115,8 @@ sub process_feed {
     if ($tx->res->code == 200) {
       my $headers = $tx->res->headers;
       my ($last_modified, $etag) = ($headers->last_modified, $headers->etag);
-      say $url, " :-) ", $tx->res->code
-        , " ", ($last_modified // ''), " ", ($etag // '');
+      $self->log->debug( $url, " :-) ", $tx->res->code
+        , " ", ($last_modified // ''), " ", ($etag // '') );
       if ($last_modified) {
         $sub->{last_modified} = $last_modified;
       }
@@ -129,7 +129,7 @@ sub process_feed {
     #    $item->{
         my ($link, $title, $content) = map { $item->{$_} } (qw(link title content));
         die "No link for item ", $item->{_raw}, "\n" unless ($link);
-        say "Saving item with $link - $title";
+        $self->log->info( "Saving item with $link - $title" );
         $item->{'origin'} = $url; # save our source feed...
         # convert dates to Mongodb BSON ?
         # for (qw(published updated)) { $item->{$_} = bson_date $item->{$_} * 1000 }
@@ -140,11 +140,11 @@ sub process_feed {
       # say "=====";	
       $sub->{'active'} = 1;
     }
-    else { say "$url :-( " , $tx->res->code; };
+    else { $self->log->info( "$url :-( " , $tx->res->code ); };
   }
   else {
     my ($err, $code) = $tx->error;
-    say $url, " :-( ", ( $code ? "$code response $err" : "connection error: $err" );
+    $self->log->info( $url, " :-( ", ( $code ? "$code response $err" : "connection error: $err" ) );
     $sub->{'active'} = 0;
   }
   $self->feeds->update({ _id => $sub->{'_id'} }, $sub);

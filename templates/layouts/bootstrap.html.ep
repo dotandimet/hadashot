@@ -2,8 +2,8 @@
 <html>
   <head>
      <title><%= title %></title>
-     <link rel="stylesheet" href="<%= url_for("/css/bootstrap.min.css") %>" />
-     <link rel="stylesheet" href="<%= url_for("/css/font-awesome.min.css") %>" />
+     %= stylesheet url_for("/css/bootstrap.min.css")
+     %= stylesheet url_for("/css/font-awesome.min.css")
   <style type="text/css">
   body { 
     padding-top: 60px;
@@ -15,16 +15,28 @@
     <div class="navbar navbar-inverse navbar-inner navbar-fixed-top">
     <a class="brand" href="/">חדשות</a>
     <ul class="nav">
-    <li><a href="/settings/blogroll">Blogroll</a></li>
+    <li class="dropdown">
+      <a href="/settings/blogroll" class="dropdown-toggle"
+      data-toggle="dropdown">Blogroll <b class="caret"></b></a>
+      <ul class="dropdown-menu">
+      <li><%= modal_btn 'Import...' => 'import' %></li>
+      </ul>
+     </li>
     <li><a href="/feed/river">Feeds</a></li>
     </ul>
     </div>
     <div class="container">
        <%= content %>
     </div>
-     <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
-     <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.0.8/angular.min.js"></script>
-     <script language="javascript" src="<%= url_for("/js/bootstrap.min.js") %>"></script>
-     <script language="javascript" src="<%= url_for('/js/hadashot.js') %>"></script>
+%= modal 'import', 'Import Subscriptions', begin 
+%= form_for '/settings/import' => (method => 'post', enctype => 'multipart/form-data') => begin
+%= file_field 'opmlfile' => multiple => 'true'
+%= submit_button 'Import', 'class' => 'btn'
+% end
+% end
+
+     %= javascript "//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"
+     %= javascript url_for("/js/bootstrap.min.js")
+     %= javascript url_for('/js/hadashot.js') 
   </body>
 </html>

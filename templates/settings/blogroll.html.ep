@@ -1,9 +1,5 @@
 %layout 'bootstrap';
 % title "Look, your subs!";
-%= form_for '/settings/import' => (method => 'post', enctype => 'multipart/form-data') => begin
-%= file_field 'opmlfile' => multiple => 'true'
-%= submit_button 'Import', 'class' => 'btn'
-% end
 <div>
 % if ($subs) { 
 <dl>

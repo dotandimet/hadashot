@@ -24,7 +24,8 @@ sub import {
             }
         }
     }
-    $self->render( subs => [@loaded, @exist] );
+    $self->redirect_to( 'settings/blogroll' );
+#    $self->render( subs => [@loaded, @exist] );
 }
 
 sub blogroll {

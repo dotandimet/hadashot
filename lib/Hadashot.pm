@@ -8,6 +8,7 @@ sub startup {
 
   # Documentation browser under "/perldoc"
   $self->plugin('PODRenderer');
+  $self->plugin('BootstrapTagHelpers');
   my $config = $self->plugin('Config', default => {
       db_type => 'mango',
       db_connect => 'mongodb://localhost:27017',
