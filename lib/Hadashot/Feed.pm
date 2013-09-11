@@ -5,8 +5,16 @@ use Mojo::Util qw(encode);
 
 sub river {
   my ($self) = @_;
-  my $news =  $self->backend->items->find({});
+	my $q = {};
+	if ($self->param('src')) {
+		$q->{'origin'} = $self->param('src');
+	}
+	if ($self->param('before')) {
+		$q->{'published'} = {'&lt' => $self->param('before')};
+	}
+  my $news =  $self->backend->items->find($q);
   $news->sort({ published => -1});
+	$news->limit(20);
   say " Got ", $news->count() , " items\n";
   $self->render(items => $news->all, total => $news->count());
 }

@@ -8,8 +8,8 @@
   <h4><%= $item->{title} %></h4>
   <p><%= todate($item->{published}) %><a href="<%= $item->{link} %>"><%= $item->{link} %></a>
   <a href="/feed/debug/?_id=<%= $item->{_id} %>">debug</a></p>
-  <div><%== $item->{description} %></div>
-  <div class="well"><%= dumper $item %></div>
+  <div class="well"><%== $item->{description} %></div>
+	<div id="c<%= $item->{_id} %>"><%== $item->{content} %></div>
 % }
 
 

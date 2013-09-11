@@ -24,8 +24,7 @@ sub startup {
     state $bak = Hadashot::Backend->new(
       conf => $config,
       ua => $self->ua,
-      db => Mango->new($self->config->{'db_connect'})->db($self->config->{'db_name'}),
-
+			log => $self->log
       ); 
     } );
 

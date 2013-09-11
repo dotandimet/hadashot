@@ -9,16 +9,26 @@ use Mojo::IOLoop;
 use Mango;
 use HTTP::Date;
 
-has db => sub { Mango->new('mongodb://localhost:27017')->db('hadashot'); };
+has conf => sub { {} };
+has dbh =>sub { Mango->new($_[0]->conf->{'db_connect'}) };
+has db => sub { $_[0]->dbh->db($_[0]->conf->{'db_name'}); };
 has json => sub { Mojo::JSON->new(); };
 has ua => sub { Mojo::UserAgent->new(); };
-has feeds => sub { $_[0]->db()->collection('subs') };
-has items => sub { $_[0]->db()->collection('items') };
+has feeds => sub { $_[0]->db()->collection($_[0]->conf->{'db_feeds'}) };
+has items => sub { $_[0]->db()->collection($_[0]->conf->{'db_items'}) };
+has log => sub { Mojo::Log->new() };
 
 sub reset { # wanna drop all your data? cool.
 	my ($self) = @_;
-	$self->feeds->drop();
-	$self->items->drop();
+	$self->feeds->drop( sub {
+		my ($col, $er) = @_;
+		$self->log->info('dropped feeds');
+		if ($er) {
+			$self->log->error('Got error ' , $er);
+		}
+		$col->create();
+  } );
+	$self->items->drop( sub { $_[0]->create(); });
 	$self->log->info('dropped all subs and items');
 }
 

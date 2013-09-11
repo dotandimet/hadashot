@@ -10,24 +10,25 @@
 % for my $item (@$subs) {
 % my ($dir, $align) = ($item->{rtl}) ? ('rtl', 'right') : ('ltr', 'left');
 <!--
-<dt align="<%= $align %>"><a href="<%= $item->{xmlUrl} %>"><i class="icon-rss"></i> rss</a>
-<a dir="<%= $dir %>" href="<%= $item->{htmlUrl} %>"><%== $item->{title} %></a>
+<dt align="<%= $align %>"><a dir="<%= $dir %>" href="<%= $item->{htmlUrl} %>"><%== $item->{title} %></a>
+<a href="<%= $item->{xmlUrl} %>"><i class="icon-rss"></i> rss</a>
 </dt>
 <dd><b>Categories</b>
 %= join q{, }, sort @{ $item->{categories} || [] };
 <div class="well">
 %= dumper $item;
-</div>
+</div 
 </dd>
  -->
 %= tag 'dt', align => $align => begin
-%= link_to $item->{xmlUrl} => begin %><%= tag 'i', class => 'icon-rss', '' %> rss<% end 
 %= link_to $item->{htmlUrl}, dir => $dir => begin %><%= $item->{title} %><% end 
+%= link_to $item->{xmlUrl} => begin %><%= tag 'i', class => 'icon-rss', '' %> rss<% end 
+<%= link_to url_for('/feed/river')->query('src' => $item->{xmlUrl}) => begin %>go<% end %>
 <% end %>
 %= tag 'dd', => begin
 %= tag 'strong', 'Categories '
 %= join ', ', sort @{ $item->{categories} || [] } 
-%= tag 'div', class => "well", dumper $item
+%= # tag 'div', class => "well", dumper $item
 %  end 
 % }
 </dl>
