@@ -5,6 +5,9 @@
 <a href="{{=xmlUrl}}"><i class="icon-rss"></i> rss</a>
 <a href="{{=htmlUrl}}" dir="ltr">{{=title}}</a>
 <a href="/feed/river?src={{=xmlUrl}}" dir="ltr">go</a>
+{{ if (obj.categories && categories.length) { }}
+<br><strong>Categories: </strong> {{= categories.join(', ') }}
+{{ } else {console.log(xmlUrl)} }}
 </div>
 </script>
 
