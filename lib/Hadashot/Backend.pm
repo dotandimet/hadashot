@@ -18,6 +18,12 @@ has feeds => sub { $_[0]->db()->collection($_[0]->conf->{'db_feeds'}) };
 has items => sub { $_[0]->db()->collection($_[0]->conf->{'db_items'}) };
 has log => sub { Mojo::Log->new() };
 
+sub setup {
+  my ($self) = @_;
+  $self->items->ensure_index({published => -1});
+  $self->items->ensure_index({origin => 1});
+}
+
 sub reset { # wanna drop all your data? cool.
 	my ($self) = @_;
 	$self->feeds->drop( sub {

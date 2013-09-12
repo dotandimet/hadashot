@@ -2,12 +2,12 @@
 % title 'Now with javascript';
 <script type="text/html" id="blogroll_tmpl">
 <div>
-<a href="{{=xmlUrl}}"><i class="icon-rss"></i> rss</a>
-<a href="{{=htmlUrl}}" dir="ltr">{{=title}}</a>
-<a href="/feed/river?src={{=xmlUrl}}" dir="ltr">go</a>
-{{ if (obj.categories && categories.length) { }}
-<br><strong>Categories: </strong> {{= categories.join(', ') }}
-{{ } else {console.log(xmlUrl)} }}
+<a href="<%%=obj.xmlUrl%>"><i class="icon-rss"></i> rss</a>
+<a href="<%%=obj.htmlUrl%>" dir="ltr"><%%=obj.title%></a>
+<a href="/feed/river?src=<%%=obj.xmlUrl%>" dir="ltr">go</a>
+<%% if (obj.categories) { %>
+<br><strong>Categories: </strong> <%%= obj.categories.join(', ') %>
+<%% } else {console.log(obj.xmlUrl)} %>
 </div>
 </script>
 

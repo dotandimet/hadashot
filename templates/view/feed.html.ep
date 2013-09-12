@@ -2,15 +2,15 @@
 % title 'Feeds, Now with javascript';
 <script type="text/html" id="feed_tmpl">
 <div>
-  <h4>{{= title }}</h4>
-  <p>{{= todate(published) }}<a href="{{= link }}">{{= link }}</a>
-  <a href="/feed/debug/?_id={{= _id }}">debug</a></p>
-	{{ if (obj.description) { }}
-  <div class="well">{{= description }}</div>
-	{{ } }}
-	{{ if (obj.content) { }}
-	<div id="c{{= _id }}">{{= content }}</div>
-	{{ } }}
+  <h4><%%= obj.title %></h4>
+  <p><%%= todate(obj.published) %><a href="<%%= obj.link %>"><%%= obj.link %></a>
+  <a href="/feed/debug/?_id=<%%= obj._id %>">debug</a></p>
+	<%% if (obj.description) { %>
+  <div class="well"><%%= obj.description %></div>
+	<%% } %>
+	<%% if (obj.content) { %>
+	<div id="c<%%= obj._id %>"><%%= obj.content %></div>
+	<%% } %>
 </div>
 </script>
 
