@@ -18,7 +18,7 @@
   document.onreadystatechange = 
   function(){
     if (f == 0) {  
-    hadashot.subsLoad('#sublist', 'blogroll_tmpl', '/settings/blogroll/?js=1');
+    hadashot.subsLoad('#sublist', 'blogroll_tmpl', '/settings/blogroll/?js=1', 'subs');
     f = 1;
     }
    };
