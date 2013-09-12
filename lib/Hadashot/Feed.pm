@@ -15,8 +15,13 @@ sub river {
   my $news =  $self->backend->items->find($q);
   $news->sort({ published => -1});
 	$news->limit(20);
-  say " Got ", $news->count() , " items\n";
-  $self->render(items => $news->all, total => $news->count());
+  $self->app->log->info( " Got ", $news->count() , " items" );
+	if ($self->param('js')) {
+  	$self->render(json => { items => $news->all, total => $news->count() });
+	}
+	else {
+  	$self->render(items => $news->all, total => $news->count());
+	}
 }
 
 sub debug {

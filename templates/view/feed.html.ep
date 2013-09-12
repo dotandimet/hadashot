@@ -1,0 +1,32 @@
+% layout 'bootstrap';
+% title 'Feeds, Now with javascript';
+<script type="text/html" id="feed_tmpl">
+<div>
+  <h4>{{= title }}</h4>
+  <p>{{= todate(published) }}<a href="{{= link }}">{{= link }}</a>
+  <a href="/feed/debug/?_id={{= _id }}">debug</a></p>
+	{{ if (obj.description) { }}
+  <div class="well">{{= description }}</div>
+	{{ } }}
+	{{ if (obj.content) { }}
+	<div id="c{{= _id }}">{{= content }}</div>
+	{{ } }}
+</div>
+</script>
+
+<div id="feeds">
+</div>
+<script language="javascript">
+	function todate(tim) {
+		return new Date(tim * 1000);
+	};
+  var f = 0;
+  document.onreadystatechange = 
+  function(){
+    if (f == 0) {  
+    hadashot.subsLoad('#feeds', 'feed_tmpl', '/feed/river/?js=1', 'items');
+    f = 1;
+    }
+   };
+</script>
+

@@ -1,12 +1,12 @@
 var hadashot = (function(jq,me){
 //  jq(function(){ alert("hello!")});
-  me.subsLoad = function(container, template, url) {
+  me.subsLoad = function(container, template, url, root) {
     jq.getJSON(url, 
       function(resp) {
-        var subs = resp.subs;
+        var subs = resp[root];
         var sub = me.tmpl(template);
         // console.log(sub.toSource());
-        var l = resp.subs.length;
+        var l = subs.length;
         var elements = [];
         for (var i = 0; i < l; i++ ) {
           elements.push(sub( subs[i] ));
