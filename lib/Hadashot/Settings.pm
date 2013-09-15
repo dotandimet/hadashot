@@ -41,7 +41,7 @@ sub blogroll {
 		$s->{'items'} =  $items_per_sub{$s->{xmlUrl}}[0] || 0;
 		$s->{'last'}  = $items_per_sub{$s->{xmlUrl}}[1] || 0;
 	}
-	@$subs = sort { $b->{published} <=> $a->{published} || $b->{items} <=> $a->{items} } @$subs;
+	@$subs = sort { $b->{last} <=> $a->{last} || $b->{items} <=> $a->{items} } @$subs;
   if ($self->param('js')) {
     $self->render(json => { subs => $subs } );
   }
@@ -50,5 +50,21 @@ sub blogroll {
   }
 }
 
-
+sub fetch_subscriptions {
+  my ($self) = @_;
+  $self->render_later;
+  my @urls = @{$self->param('url')};
+  my @subs = map { 
+    $self->backend->feeds->find_one( { xmlUrl => $_ } )->all
+  } @urls;
+  # $self->backend->process_feeds(
+  if ($self->param('all')) {
+    $self->backend->fetch_subscriptions(1);
+  }
+#  elsif { }
+  else {
+    $self->backend->fetch_subscriptions();
+  }
+  $self->render(text => 'DONE');
+}
 1;

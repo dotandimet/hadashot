@@ -14,6 +14,7 @@ has conf => sub { {} };
 has dbh =>sub { Mango->new($_[0]->conf->{'db_connect'}) };
 has db => sub { $_[0]->dbh->db($_[0]->conf->{'db_name'}); };
 has json => sub { Mojo::JSON->new(); };
+has dom => sub { Mojo::DOM->new(); };
 has ua => sub { Mojo::UserAgent->new(); };
 has feeds => sub { $_[0]->db()->collection($_[0]->conf->{'db_feeds'}) };
 has items => sub { $_[0]->db()->collection($_[0]->conf->{'db_items'}) };
