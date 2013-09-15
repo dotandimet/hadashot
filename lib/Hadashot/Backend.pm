@@ -135,7 +135,14 @@ sub process_feed {
 				sub {
 					my $item = pop; 
 					$item->{'origin'} = $url; # save our source feed...
-					$self->store_feed_item( $item );
+          if ($item->{'link'} =~ m/feedproxy/) { # cleanup feedproxy links
+            $self->unshorten_url($item->{'link'}, sub {
+              $item->{'link'} = $self->cleanup_feedproxy($_[0]);
+					    $self->store_feed_item( $item ); 
+            } );
+          } else {
+  					$self->store_feed_item( $item );
+          }  
 				 }
 			);
       $sub->{'active'} = 1;
@@ -257,6 +264,37 @@ sub sanitize_item {
 			$item->{$field} = $self->dom->parse($item->{$field})->find('script')->remove()->to_xml;
 		}
 	}
+}
+
+sub unshorten_url {
+  my $self = shift;
+  my $url  = shift;
+  my $cb   = (ref $_[-1] eq 'CODE') ? pop : undef;
+  my $final = $url;
+  $self->ua->max_redirects(10);
+  if ($cb) { # try non-blocking
+  $self->ua->head($url, sub {
+    my ($ua, $tx) = @_;
+    if ($tx->success) {
+    $self->log->info("Redirects " . join q{, }, map { $_->req->url }
+    (@{$tx->redirects}) );
+    $cb->($tx->req->url);
+    } else {
+      $self->log->error( $tx->error );
+    }
+  });
+  }
+  else {
+    my $tx =$self->ua->head($url);
+    return $tx->req->url;
+  }
+}
+
+sub cleanup_feedproxy {
+  my ($self, $url) = @_;
+  for (qw(utm_source utm_medium utm_campaign)) {
+    $url->query->remove($_);
+  }
 }
 
 1;
