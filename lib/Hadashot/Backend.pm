@@ -22,21 +22,16 @@ has log => sub { Mojo::Log->new() };
 
 sub setup {
   my ($self) = @_;
+  $self->feeds->create();
+  $self->items->create();
   $self->items->ensure_index({published => -1});
   $self->items->ensure_index({origin => 1});
 }
 
 sub reset { # wanna drop all your data? cool.
 	my ($self) = @_;
-	$self->feeds->drop( sub {
-		my ($col, $er) = @_;
-		$self->log->info('dropped feeds');
-		if ($er) {
-			$self->log->error('Got error ' , $er);
-		}
-		$col->create();
-  } );
-	$self->items->drop( sub { $_[0]->create(); });
+	$self->feeds->drop();
+	$self->items->drop();
 	$self->log->info('dropped all subs and items');
 }
 
@@ -65,7 +60,6 @@ sub parse_opml {
   }
   return (values %subscriptions);
 }
-
 
 sub get_direction {
   my ($self, $text ) = @_;
