@@ -12,7 +12,7 @@ sub river {
 		$q->{'origin'} = $self->param('src');
 	}
 	if ($self->param('before')) {
-		$q->{'published'} = {'$lte' => bson_time( $self->param('before') )};
+		$q->{'published'} = {'$lt' => bson_time( $self->param('before') )};
 	}
   my $news =  $self->backend->items->find($q);
   $news->sort({ published => -1});
