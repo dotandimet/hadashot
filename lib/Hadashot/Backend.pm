@@ -38,7 +38,7 @@ sub reset { # wanna drop all your data? cool.
 sub parse_opml {
   my ($self, $opml_file) = @_;
   my $opml_str  = decode 'UTF-8', (ref $opml_file) ? $opml_file->slurp : slurp $opml_file;
-  my $d = Mojo::DOM->new($opml_str);
+  my $d = $self->dom->parse($opml_str);
   my (%subscriptions, %categories);
   for my $item ($d->find(q{outline})->each) {
 	my $node = $item->attr;
@@ -188,7 +188,7 @@ sub cleanup_reader_fields {
 sub parse_rss {
 	my ($self, $rss_file, $cb) = @_;
   my $rss_str  = decode 'UTF-8', (ref $rss_file) ? $rss_file->slurp : slurp $rss_file;
-  my $d = Mojo::DOM->new($rss_str);
+  my $d = $self->dom->parse($rss_str);
 	my $items = $d->find('item');
 	my $entries = $d->find('entry'); # Atom
   my $res = [];
@@ -254,8 +254,7 @@ sub sanitize_item {
 	state $d;
 	for my $field (qw(content description title)) {
 		if ($item->{$field} && $item->{$field} =~ /\<script/) {
-			$d ||= Mojo::DOM->new();
-			$item->{$field} = $d->parse($item->{$field})->find('script')->remove()->to_xml;
+			$item->{$field} = $self->dom->parse($item->{$field})->find('script')->remove()->to_xml;
 		}
 	}
 }
