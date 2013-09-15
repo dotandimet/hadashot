@@ -31,7 +31,7 @@ A sidebar, maybe?
 <script language="javascript">
 	var last_on_page = 0;
 	function todate(tim) {
-		return new Date(tim);
+		return new Date(parseInt(tim));
 	};
   var f = 0;
   document.onreadystatechange = 
