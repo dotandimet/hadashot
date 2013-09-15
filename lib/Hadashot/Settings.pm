@@ -1,5 +1,6 @@
 package Hadashot::Settings;
 use Mojo::Base 'Mojolicious::Controller';
+use Mango::BSON qw(encode_int64);
 
 # This action will render a template
 
@@ -32,6 +33,15 @@ sub blogroll {
   my ($self) = @_;
   my $subs = undef;
   $subs = $self->backend->feeds->find()->all();
+	my $have_items = $self->backend->items->aggregate([ { '$group' => { '_id' => '$origin', 'items' => { '$sum' => 1 }, 'last' => { '$max' => '$published'} } } ]); 
+	$self->app->log->info($self->dumper($have_items));
+	my %items_per_sub = map { $_->{_id} => [ $_->{items}, $_->{last} ] } @$have_items;
+	$self->app->log->info($self->dumper(\%items_per_sub));
+	foreach my $s (@$subs) {
+		$s->{'items'} =  $items_per_sub{$s->{xmlUrl}}[0] || 0;
+		$s->{'last'}  = $items_per_sub{$s->{xmlUrl}}[1] || 0;
+	}
+	@$subs = sort { $b->{published} <=> $a->{published} || $b->{items} <=> $a->{items} } @$subs;
   if ($self->param('js')) {
     $self->render(json => { subs => $subs } );
   }

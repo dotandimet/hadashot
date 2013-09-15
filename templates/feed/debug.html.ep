@@ -9,7 +9,7 @@
 <table class="table">
 <caption>Item</caption>
 <tr><th>Field</th><th>Item Value</th><th>Parsed Value</th></tr>
-% foreach my $k (sort { length $item->{$a} <=> length $item->{$b} } keys %$item) {
+% foreach my $k (@$keys) {
 <tr><td><%= $k %></td><td><%= $item->{$k} %></td><td><%= $parse->{$k} %></td></tr>
 % }
 </table>

@@ -12,7 +12,7 @@
 <dd><b>Categories</b>
 %= join q{, }, sort @{ $item->{categories} || [] };
 <div class="well">
-%= dumper $item;
+%== dumper $item;
 </div 
 </dd>
  -->

@@ -23,4 +23,10 @@ sys	0m0.120s
 
 script/hadashot eval 'app->backend->fetch_subscriptions(1)'
 
+# drop the collections
 script/hadashot eval 'app->backend->reset()';
+
+
+# debugging rss parsing:
+script/hadashot get http://lumberjaph.net/index.atom > lumberjaph.atom
+script/hadashot eval 'app->backend->parse_rss(q{lumberjaph.atom}, sub { say app->dumper($_[-1]); })'

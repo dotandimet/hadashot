@@ -3,14 +3,19 @@
 
 <h1>What kept you?</h1>
 <p>You have <%= $total %> items</p>
-
+% my $last = 0;
 % foreach my $item (@$items) {
   <h4><%= $item->{title} %></h4>
   <p><%= todate($item->{published}) %><a href="<%= $item->{link} %>"><%= $item->{link} %></a>
   <a href="/feed/debug/?_id=<%= $item->{_id} %>">debug</a></p>
   <div class="well"><%== $item->{description} %></div>
 	<div id="c<%= $item->{_id} %>"><%== $item->{content} %></div>
+<!--
+%== dumper $item;
+-->
+%	$last = $item->{published};
 % }
 
-
-
+<ul class="nav affix">
+<li> <%= link_to Earlier => url_with->query(before => $last) %> </li>
+</ul>

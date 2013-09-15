@@ -2,12 +2,32 @@
 % title 'Now with javascript';
 <script type="text/html" id="blogroll_tmpl">
 <div>
+<%% if (!obj.active || obj.active === 0) { %><del> <%% } %>
 <a href="<%%=obj.xmlUrl%>"><i class="icon-rss"></i> rss</a>
 <a href="<%%=obj.htmlUrl%>" dir="ltr"><%%=obj.title%></a>
 <a href="/feed/river?src=<%%=obj.xmlUrl%>" dir="ltr">go</a>
 <%% if (obj.categories) { %>
-<br><strong>Categories: </strong> <%%= obj.categories.join(', ') %>
+<strong>Categories: </strong> [ <%%= obj.categories.join(', ') %> ]
 <%% } else {console.log(obj.xmlUrl)} %>
+<%% if (obj.etag) { %>
+Etag: <%%= obj.etag %>
+<%% } %>
+<%% if (obj.last_modified) { %>
+Last Modified: <%%= obj.last_modified %>
+<%% } %>
+<%% if (obj.items) { %>
+Items: <%%= obj.items %>
+<%% } else { %>
+0 Items
+<%% } %>
+<%% if (obj.last && obj.last > 0) { %>
+Latest item: <%%= new Date(obj.last) %>
+<%% } else { %>
+...
+<%% if (!obj.active || obj.active === 0) { %></del> <%% } %>
+<%% } %>
+
+
 </div>
 </script>
 

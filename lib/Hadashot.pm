@@ -29,7 +29,7 @@ sub startup {
       ); 
     } );
 
-  $self->helper( todate => sub { Hadashot::Backend::time2str($_[1]); } );
+  $self->helper( todate => sub { Hadashot::Backend::time2str($_[1] / 1000); } );
 
   # Router
   my $r = $self->routes;

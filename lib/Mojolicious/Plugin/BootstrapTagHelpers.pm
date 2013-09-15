@@ -50,7 +50,8 @@ sub register {
                                       )
                                       . $self->tag(
                                         'div',
-                                        class => "modal-footer"
+                                        class => "modal-footer",
+																				''
                                       );
                                 }
                             );

@@ -11,14 +11,27 @@
 	<%% if (obj.content) { %>
 	<div id="c<%%= obj._id %>"><%%= obj.content %></div>
 	<%% } %>
+	<%% last_on_page = obj.published; %>
 </div>
 </script>
-
-<div id="feeds">
+<h1>Eat This</h1>
+<div class="row">
+<div class="span3">
+<h2>Your Menu</h2>
+A sidebar, maybe?
+<ul class="nav affix">
+<li id="before"><a href="#">Earlier</a></li>
+</ul>
 </div>
+<div id="feeds" class="span9">
+<h2>Your Feed</h2>
+</div>
+</div>
+
 <script language="javascript">
+	var last_on_page = 0;
 	function todate(tim) {
-		return new Date(tim * 1000);
+		return new Date(tim);
 	};
   var f = 0;
   document.onreadystatechange = 
@@ -26,7 +39,12 @@
     if (f == 0) {  
     hadashot.subsLoad('#feeds', 'feed_tmpl', '/feed/river/?js=1', 'items');
     f = 1;
+			$('#before a').click(earlier);	
     }
    };
+	function earlier() {
+		hadashot.subsLoad('#feeds', 'feed_tmpl', '/feed/river/?js=1&before=' + last_on_page, 'items');
+		return false;
+	}
 </script>
 
