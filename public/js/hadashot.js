@@ -11,7 +11,7 @@ var hadashot = (function(jq,me){
         for (var i = 0; i < l; i++ ) {
           elements.push(sub( subs[i] ));
         }
-        jq(container).append(elements.join(''));
+        jq(container).fadeOut().html(elements.join('')).fadeIn();
       });
   };
 

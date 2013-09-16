@@ -14,9 +14,12 @@ sub river {
 	if ($self->param('before')) {
 		$q->{'published'} = {'$lt' => bson_time( $self->param('before') )};
 	}
+	if ($self->param('after')) {
+		$q->{'published'} = {'$gt' => bson_time( $self->param('after') )};
+	}
   my $news =  $self->backend->items->find($q);
   $news->sort({ published => -1});
-	$news->limit(20);
+	$news->limit(8);
 	$news->all(sub{
 			my ($cursor, $err, $docs) = @_;
 			if ($err) {

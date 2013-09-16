@@ -5,7 +5,7 @@
 <%% if (!obj.active || obj.active === 0) { %><del> <%% } %>
 <a href="<%%=obj.xmlUrl%>"><i class="icon-rss"></i> rss</a>
 <a href="<%%=obj.htmlUrl%>" dir="ltr"><%%=obj.title%></a>
-<a href="/feed/river?src=<%%=obj.xmlUrl%>" dir="ltr">go</a>
+<a href="/view/feed?src=<%%= window.encodeURIComponent(obj.xmlUrl) %>" dir="ltr">go</a>
 <%% if (obj.categories) { %>
 <strong>Categories: </strong> [ <%%= obj.categories.join(', ') %> ]
 <%% } else {console.log(obj.xmlUrl)} %>

@@ -4,13 +4,15 @@
 <div>
   <h4><%%= obj.title %></h4>
   <p><%%= todate(obj.published) %><a href="<%%= obj.link %>"><%%= obj.link %></a>
-  <a href="/feed/debug/?_id=<%%= obj._id %>">debug</a></p>
+  <a href="/feed/debug/?_id=<%%= obj._id %>">debug</a> <i>Source: <a class="origin" href="<%%= obj.origin %>"><%%= obj.origin %></a></i></p>
 	<%% if (obj.description) { %>
   <div class="well"><%%= obj.description %></div>
 	<%% } %>
 	<%% if (obj.content) { %>
 	<div id="c<%%= obj._id %>"><%%= obj.content %></div>
 	<%% } %>
+	<%% if (obj.published < last_on_page) last_on_page = obj.published; %>
+	<%% if (obj.published > first_on_page) first_on_page = obj.published; %>
 	<%% last_on_page = obj.published; %>
 </div>
 </script>
@@ -21,6 +23,7 @@
 A sidebar, maybe?
 <ul class="nav affix">
 <li id="before"><a href="#">Earlier</a></li>
+<li id="after"><a href="#">Later</a></li>
 </ul>
 </div>
 <div id="feeds" class="span9">
@@ -29,21 +32,59 @@ A sidebar, maybe?
 </div>
 
 <script language="javascript">
-	var last_on_page = 0;
+	var last_on_page = new Date().getTime();
+	var first_on_page = 0;
 	function todate(tim) {
 		return new Date(parseInt(tim));
 	};
   var f = 0;
   document.onreadystatechange = 
   function(){
-    if (f == 0) {  
-    hadashot.subsLoad('#feeds', 'feed_tmpl', '/feed/river/?js=1', 'items');
+    if (f == 0) {
+		var arg = obj_to_query_str(query_str_to_obj(document.location.search.substr(1)));
+    hadashot.subsLoad('#feeds', 'feed_tmpl', '/feed/river/?'+arg, 'items');
     f = 1;
-			$('#before a').click(earlier);	
+			$('#before a').click(earlier);
+			$('#after a').click(later);
+			$('#feeds').on('click', 'a.origin', load_feed);
     }
    };
+
+	function query_str_to_obj(q, o) {
+		if (o === undefined) {
+			o = { js : 1 };
+		}
+		var arg_pairs = q.split('&');
+		for(var i=0; i < arg_pairs.length; i++) {
+			var kv = arg_pairs[i].split('=');
+			var k = window.decodeURIComponent(kv[0]);
+			var v = window.decodeURIComponent(kv[1]);
+			o[k] = v;
+		}
+		return o;
+	}
+
+	function obj_to_query_str(o) {
+		var s = '';
+		var args = [];
+		for(var k in o) {
+			args.push(window.encodeURIComponent(k) + '=' + window.encodeURIComponent(o[k]));
+		}
+		s += args.join('&');
+		return s;
+	}
+
 	function earlier() {
 		hadashot.subsLoad('#feeds', 'feed_tmpl', '/feed/river/?js=1&before=' + last_on_page, 'items');
+		return false;
+	}
+	function later() {
+		hadashot.subsLoad('#feeds', 'feed_tmpl', '/feed/river/?js=1&after=' + first_on_page, 'items');
+		return false;
+	}
+	function load_feed(ev) {
+		ev.preventDefault();
+		hadashot.subsLoad('#feeds', 'feed_tmpl', '/feed/river/?js=1&src=' + this.href, 'items');
 		return false;
 	}
 </script>

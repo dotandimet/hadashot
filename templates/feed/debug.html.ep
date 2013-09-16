@@ -10,6 +10,7 @@
 <caption>Item</caption>
 <tr><th>Field</th><th>Item Value</th><th>Parsed Value</th></tr>
 % foreach my $k (@$keys) {
+% foreach my $o ($item, $parse) { if (ref $o->{$k}) { $o->{$k} = dumper($o->{$k}) } }
 <tr><td><%= $k %></td><td><%= $item->{$k} %></td><td><%= $parse->{$k} %></td></tr>
 % }
 </table>
