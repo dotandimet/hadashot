@@ -147,7 +147,11 @@ sub process_feed {
 			);
       $sub->{'active'} = 1;
     }
-    else { $self->log->info( "$url :-( " . $tx->res->code ); };
+		elsif ($tx->res->code == 304) { # not modified
+			$self->log->info("$url :-) " . $tx->res->code . " " . $tx->res->message);
+      $sub->{'active'} = 1;
+		}
+    else { $self->log->info( "$url :-( " . $tx->res->code . " " . $tx->res->message); };
   }
   else {
     my ($err, $code) = $tx->error;
@@ -243,6 +247,12 @@ sub parse_rss_item {
 				}
        }
     });
+		# find tags:
+		my @tags;
+		$item->find('category')->each(sub { push @tags, $_[0]->text || $_[0]->attr('term') } );
+		if (@tags) {
+			$h{'tags'} = \@tags;
+		}
     #
 		# normalize fields:
 		my %replace = ( 'content\:encoded' => 'content', 'pubDate' => 'published', 'dc\:date' => 'published', 'summary' => 'description', 'updated' => 'published', 'guid' => 'link' );
@@ -295,6 +305,7 @@ sub cleanup_feedproxy {
   for (qw(utm_source utm_medium utm_campaign)) {
     $url->query->remove($_);
   }
+	return $url;
 }
 
 1;
