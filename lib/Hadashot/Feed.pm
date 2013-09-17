@@ -17,6 +17,10 @@ sub river {
 	if ($self->param('after')) {
 		$q->{'published'} = {'$gt' => bson_time( $self->param('after') )};
 	}
+	if ($self->param('tag')) {
+		$q->{'tags'} = { '$all' => [ $self->param('tag') ] };
+	}
+	$self->app->log->debug($self->dumper($q));
   my $news =  $self->backend->items->find($q);
   $news->sort({ published => -1});
 	$news->limit(8);

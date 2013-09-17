@@ -8,7 +8,6 @@ sub import {
     my $self = shift;
     my (@subs, @loaded, @exist);
     if ( my $opml_file = $self->param('opmlfile') ) {
-#				$self->app->log("Got opml file of size: " . $opml_file->size());
         @subs = $self->backend->parse_opml( $opml_file->asset );
         for my $sub (@subs) {
             $sub->{direction} = $self->backend->get_direction($sub->{'title'}); # set rtl flag

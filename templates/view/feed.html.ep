@@ -2,9 +2,12 @@
 % title 'Feeds, Now with javascript';
 <script type="text/html" id="feed_tmpl">
 <div>
-  <h4><%%= obj.title %></h4>
-  <p><%%= todate(obj.published) %><a href="<%%= obj.link %>"><%%= obj.link %></a>
+  <h4><a href="<%%= obj.link %>"><%%= obj.title %></a></h4>
+  <p><%%= todate(obj.published) %>
   <a href="/feed/debug/?_id=<%%= obj._id %>">debug</a> <i>Source: <a class="origin" href="<%%= obj.origin %>"><%%= obj.origin %></a></i></p>
+<%% if (obj.tags) { %>
+<p> tags: [ <%%= obj.tags.join(',') %> ]</p>
+<%% } %>
 	<%% if (obj.description) { %>
   <div class="well"><%%= obj.description %></div>
 	<%% } %>
@@ -19,12 +22,14 @@
 <h1>Eat This</h1>
 <div class="row">
 <div class="span3">
+<div class="affix">
 <h2>Your Menu</h2>
 A sidebar, maybe?
-<ul class="nav affix">
+<ul class="nav">
 <li id="before"><a href="#">Earlier</a></li>
 <li id="after"><a href="#">Later</a></li>
 </ul>
+</div>
 </div>
 <div id="feeds" class="span9">
 <h2>Your Feed</h2>
@@ -57,9 +62,11 @@ A sidebar, maybe?
 		var arg_pairs = q.split('&');
 		for(var i=0; i < arg_pairs.length; i++) {
 			var kv = arg_pairs[i].split('=');
-			var k = window.decodeURIComponent(kv[0]);
-			var v = window.decodeURIComponent(kv[1]);
-			o[k] = v;
+			if (kv.length == 2) {
+				var k = window.decodeURIComponent(kv[0]);
+				var v = window.decodeURIComponent(kv[1]);
+				o[k] = v;
+			}
 		}
 		return o;
 	}
