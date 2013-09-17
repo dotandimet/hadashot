@@ -12,11 +12,13 @@ usage: $0 rss URL OPTIONS
 fetch rss feed from URL, parse and print Data::Dumper output
 Valid Options:
 	-last = print only dump of last parsed item
+  -reparse = parse the saved _raw output
 EOT
 
 sub run {
 	my ($self, @args) = @_;
 	my ($url, $last_only);
+  $last_only = 0;
 	for (@args) {
 		if (m/^\-last/) {
 			$last_only = 1;
