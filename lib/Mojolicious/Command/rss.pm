@@ -36,7 +36,7 @@ sub run {
 					say $self->app->dumper($item);
 					$last_only = 2;
 				}
-				if (!defined $last_only) {
+				if ($last_only == 0) {
 				say $self->app->dumper($item);
 				}
 			} );
