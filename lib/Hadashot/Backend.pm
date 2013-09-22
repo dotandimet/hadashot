@@ -18,6 +18,7 @@ has dom => sub { Mojo::DOM->new(); };
 has ua => sub { Mojo::UserAgent->new(); };
 has feeds => sub { $_[0]->db()->collection($_[0]->conf->{'db_feeds'}) };
 has items => sub { $_[0]->db()->collection($_[0]->conf->{'db_items'}) };
+has bookmarks => sub { $_[0]->db()->collection($_[0]->conf->{'db_bookmarks'}) };
 has log => sub { Mojo::Log->new() };
 
 sub setup {
@@ -264,7 +265,6 @@ sub parse_rss_item {
     $h{"_raw"} = $item->to_xml;
 		return \%h;
 }
-
 
 sub sanitize_item {
 	my ($self, $item) = @_;

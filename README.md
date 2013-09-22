@@ -9,9 +9,12 @@ If you think the name sucks (it's Hebrew for "news"), you should see the code...
 Implemented:
 - Parse and import feeds from OPML file into mongodb.
 - fetch subscriptions via command line and save items in mongodb.
+- Show feeds and subscriptions
+- Debug parsing via command line (rss command) and browser
+- fetch only modified feeds (etag, last-modified headers)
+- paging (earlier, later - later is buggy)
 
 Plan:
-
 - Import data from these types of files:
   - OPML (list of feeds, categories)
   - Google Reader exports (OPML, JSON-dump of saved, starred and shared items)
@@ -28,7 +31,9 @@ Plan:
 - Auto-tagging?
 - Reblogging, Blog publishing.
 
-
+Todo:
+- Handle parsing of relative urls (for example - Sam Ruby's blog feed).
+- Parse feed properties (not only items).
 
 
 

@@ -15,6 +15,7 @@ sub startup {
       db_name => 'hadashot',
       db_feeds => 'subs',
       db_items => 'items',
+      db_bookmarks => 'bookmarks',
       db_raw_feeds => 'raw_feeds',
       secret => 'zasdcwdw2d'
   });
