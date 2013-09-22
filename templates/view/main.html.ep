@@ -32,6 +32,8 @@ Latest item: <%%= new Date(obj.last) %>
 </script>
 
 <div id="sublist">
+<p>It looks like you aren't subscribed to any feeds.</p>
+<p>Use <b>Settings -> Import...</b> to load some.</p>
 </div>
 <script language="javascript">
   var f = 0;
