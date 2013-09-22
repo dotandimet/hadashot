@@ -7,8 +7,9 @@ use Mango::BSON qw(encode_int64);
 sub import {
     my $self = shift;
     my (@subs, @loaded, @exist);
-    if ( my $opml_file = $self->param('opmlfile') ) {
-        @subs = $self->backend->parse_opml( $opml_file->asset );
+    if ( my $in_file = $self->param('infile') ) {
+				if ($self->param('type') eq 'OPML') {
+        @subs = $self->backend->parse_opml( $in_file->asset );
         for my $sub (@subs) {
             $sub->{direction} = $self->backend->get_direction($sub->{'title'}); # set rtl flag
             my $doc =
@@ -24,6 +25,7 @@ sub import {
                 }
             }
         }
+			}
     }
     $self->redirect_to( 'settings/blogroll' );
 #    $self->render( subs => [@loaded, @exist] );
@@ -53,18 +55,21 @@ sub blogroll {
 sub fetch_subscriptions {
   my ($self) = @_;
   $self->render_later;
-  my @urls = @{$self->param('url')};
-  my @subs = map { 
-    $self->backend->feeds->find_one( { xmlUrl => $_ } )->all
-  } @urls;
-  # $self->backend->process_feeds(
-  if ($self->param('all')) {
-    $self->backend->fetch_subscriptions(1);
-  }
-#  elsif { }
-  else {
-    $self->backend->fetch_subscriptions();
-  }
-  $self->render(text => 'DONE');
+  my @urls = $self->param('url');
+	my $subs;
+	if (@urls) {
+		$subs = $self->backend->feeds->find( { xmlUrl => { '$in' => \@urls } } )->all;
+	}
+	elsif ($self->param('all')) {
+		$subs = $self->backend->feeds->find( { })->all;
+	}
+	else {
+		$subs = $self->backend->feeds->find( { active => 1 })->all;
+	}
+  $self->backend->process_feeds(
+		$subs, sub {
+		 $self->render('text' => 'done');
+     # $self->redirect_to( 'settings/blogroll' );
+		});
 }
 1;
