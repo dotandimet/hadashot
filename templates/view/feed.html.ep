@@ -19,7 +19,7 @@
 	<%% last_on_page = obj.published; %>
 </div>
 </script>
-<h1>Eat This</h1>
+<h1>You Going To Eat This?</h1>
 <div class="row">
 <div class="span3">
 <div class="affix">

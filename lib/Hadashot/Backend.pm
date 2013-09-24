@@ -136,6 +136,11 @@ sub process_feed {
 				sub {
 					my $item = pop; 
 					$item->{'origin'} = $url; # save our source feed...
+          # fix relative links - because Sam Ruby is a wise-ass
+          if (Mojo::URL->new($item->{'link'})->host eq '') {
+            $item->{'link'} =
+              Mojo::URL->new($item->{'origin'})->path($item->{'link'})->to_abs->to_string;
+          }
           if ($item->{'link'} =~ m/feedproxy/) { # cleanup feedproxy links
             $self->unshorten_url($item->{'link'}, sub {
               $item->{'link'} = $self->cleanup_feedproxy($_[0]);

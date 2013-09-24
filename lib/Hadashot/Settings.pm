@@ -72,4 +72,13 @@ sub fetch_subscriptions {
      # $self->redirect_to( 'settings/blogroll' );
 		});
 }
+
+sub add_subscription {
+  my $self = shift;
+  my ($url) = $self->param('url');
+
+ # $self->ua->get(
+  $self->redirect_to( 'view/main' );
+}
+
 1;

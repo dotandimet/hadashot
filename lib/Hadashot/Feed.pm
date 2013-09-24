@@ -47,28 +47,41 @@ sub river {
 }
 
 sub debug {
-				my ($self) = @_;
-				my ($ass, $item);
-				if ($self->param('_id')) {
-								$item = $self->backend->items->find_one(bson_oid $self->param('_id'));
-								$ass = Mojo::Asset::Memory->new;
-								$ass->add_chunk(encode 'UTF-8', $item->{'_raw'});
-				}
-				elsif ($self->param('file')) {
-								$ass = $self->param('file')->asset;
-				}
+    my ($self) = @_;
+    my ( $ass, $item, @keys, $parse, $error );
+    if ( $self->param('_id') ) {
+        $item = $self->backend->items->find_one( bson_oid $self->param('_id') );
+        $ass  = Mojo::Asset::Memory->new;
+        $ass->add_chunk( encode 'UTF-8', $item->{'_raw'} );
+    }
+    elsif ( $self->param('file') ) {
+        $ass  = $self->param('file')->asset;
+        $item = {};
+        $self->app->log->info( "File to debug is " . $self->param('file') );
+        $self->app->log->debug( $ass->slurp );
+    }
 
-				my $parse;
-				eval {
-								$parse = $self->backend->parse_rss($ass);
-				};
-				if ($@) {
-								$self->render( item => $item, parse => undef, error => $@ );
-				}
-				else {
-								my @keys = sort { length{$a} <=> length($b) } uniq ( keys %$item, keys %{$parse->[0]} );
-								$self->render( item => $item, parse => @$parse, error => undef, keys => \@keys );
-				}
+    my $parse;
+    eval {
+        $parse = $self->backend->parse_rss($ass);
+        $self->app->log->debug( $self->dumper($parse) );
+    };
+    if ($@) {
+        $self->app->log->error("Error parsing: $@");
+        $error = $@;
+        @keys  = ();
+    }
+    else {
+        @keys = sort { length {$a} <=> length($b) }
+          uniq( keys %$item, keys %{ $parse->[0] } );
+    }
+    $self->render(
+        item => $item,
+        parse =>
+          ( ( ref $parse eq 'ARRAY' && @$parse > 0 ) ? $parse->[0] : {} ),
+        error => undef,
+        keys  => \@keys
+    );
 }
 
 
