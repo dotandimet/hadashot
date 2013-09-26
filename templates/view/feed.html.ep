@@ -8,15 +8,12 @@
 <%% if (obj.tags) { %>
 <p> tags: [ <%%= obj.tags.join(',') %> ]</p>
 <%% } %>
-	<%% if (obj.description) { %>
+  <%% if (obj.description) { %>
   <div class="well"><%%= obj.description %></div>
-	<%% } %>
-	<%% if (obj.content) { %>
-	<div id="c<%%= obj._id %>"><%%= obj.content %></div>
-	<%% } %>
-	<%% if (obj.published < last_on_page) last_on_page = obj.published; %>
-	<%% if (obj.published > first_on_page) first_on_page = obj.published; %>
-	<%% last_on_page = obj.published; %>
+  <%% } %>
+  <%% if (obj.content) { %>
+  <div id="c<%%= obj._id %>"><%%= obj.content %></div>
+  <%% } %>
 </div>
 </script>
 <h1>You Going To Eat This?</h1>
@@ -37,62 +34,78 @@ A sidebar, maybe?
 </div>
 
 <script language="javascript">
-	var last_on_page = new Date().getTime();
-	var first_on_page = 0;
-	function todate(tim) {
-		return new Date(parseInt(tim));
-	};
+  var last_on_page = new Date().getTime();
+  var first_on_page = 0;
+  function todate(tim) {
+    return new Date(parseInt(tim));
+  };
   var f = 0;
   document.onreadystatechange = 
   function(){
     if (f == 0) {
-		var arg = obj_to_query_str(query_str_to_obj(document.location.search.substr(1)));
-    hadashot.subsLoad('#feeds', 'feed_tmpl', '/feed/river/?'+arg, 'items');
+    var arg = query_str_to_obj(document.location.search.substr(1));
+    feeds = new hadashot.collection({
+      item_template: 'feed_tmpl',
+      url: '/feed/river/',
+      args: arg,
+      root: 'items',
+      onload: function() {
+        last_on_page = this.items[this.items.length-1].published;
+        first_on_page = this.items[0].published;
+        $('#before a').attr('title', 'items earlier than ' + todate(last_on_page));
+        $('#after a').attr('title', 'items later than ' + todate(first_on_page));
+      }
+    });
+    $('#feeds').append(feeds.el);
+    feeds.load();
     f = 1;
-			$('#before a').click(earlier);
-			$('#after a').click(later);
-			$('#feeds').on('click', 'a.origin', load_feed);
+      $('#before a').click(earlier);
+      $('#after a').click(later);
+      $('#feeds').on('click', 'a.origin', load_feed);
     }
    };
 
-	function query_str_to_obj(q, o) {
-		if (o === undefined) {
-			o = { js : 1 };
-		}
-		var arg_pairs = q.split('&');
-		for(var i=0; i < arg_pairs.length; i++) {
-			var kv = arg_pairs[i].split('=');
-			if (kv.length == 2) {
-				var k = window.decodeURIComponent(kv[0]);
-				var v = window.decodeURIComponent(kv[1]);
-				o[k] = v;
-			}
-		}
-		return o;
-	}
+  function query_str_to_obj(q, o) {
+    if (o === undefined) {
+      o = { js : 1 };
+    }
+    var arg_pairs = q.split('&');
+    for(var i=0; i < arg_pairs.length; i++) {
+      var kv = arg_pairs[i].split('=');
+      if (kv.length == 2) {
+        var k = window.decodeURIComponent(kv[0]);
+        var v = window.decodeURIComponent(kv[1]);
+        o[k] = v;
+      }
+    }
+    return o;
+  }
 
-	function obj_to_query_str(o) {
-		var s = '';
-		var args = [];
-		for(var k in o) {
-			args.push(window.encodeURIComponent(k) + '=' + window.encodeURIComponent(o[k]));
-		}
-		s += args.join('&');
-		return s;
-	}
+  function obj_to_query_str(o) {
+    var s = '';
+    var args = [];
+    for(var k in o) {
+      args.push(window.encodeURIComponent(k) + '=' + window.encodeURIComponent(o[k]));
+    }
+    s += args.join('&');
+    return s;
+  }
 
-	function earlier() {
-		hadashot.subsLoad('#feeds', 'feed_tmpl', '/feed/river/?js=1&before=' + last_on_page, 'items');
-		return false;
-	}
-	function later() {
-		hadashot.subsLoad('#feeds', 'feed_tmpl', '/feed/river/?js=1&after=' + first_on_page, 'items');
-		return false;
-	}
-	function load_feed(ev) {
-		ev.preventDefault();
-		hadashot.subsLoad('#feeds', 'feed_tmpl', '/feed/river/?js=1&src=' + this.href, 'items');
-		return false;
-	}
+  function earlier() {
+    feeds.load(feeds.url, { before: last_on_page });
+//    hadashot.subsLoad('#feeds', 'feed_tmpl', '/feed/river/?js=1&before=' + last_on_page, 'items');
+    return false;
+  }
+  function later() {
+    feeds.load(feeds.url, { after: first_on_page });
+    // hadashot.subsLoad('#feeds', 'feed_tmpl', '/feed/river/?js=1&after=' + first_on_page, 'items');
+    return false;
+  }
+  function load_feed(ev) {
+    ev.preventDefault();
+    feeds.load(feeds.url, { src: this.href });
+    // hadashot.subsLoad('#feeds', 'feed_tmpl', '/feed/river/?js=1&src=' + this.href, 'items');
+    return false;
+  }
 </script>
 

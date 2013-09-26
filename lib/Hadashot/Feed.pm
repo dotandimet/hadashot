@@ -8,6 +8,8 @@ sub river {
   my ($self) = @_;
 	$self->render_later();
 	my $q = {};
+	my $sort = { published => -1};
+	my $limit = $self->param('max_items') || $self->config->{'max_items'} || 8;
 	if ($self->param('src')) {
 		$q->{'origin'} = $self->param('src');
 	}
@@ -16,14 +18,15 @@ sub river {
 	}
 	if ($self->param('after')) {
 		$q->{'published'} = {'$gt' => bson_time( $self->param('after') )};
+		$sort = { published => 1 };
 	}
 	if ($self->param('tag')) {
 		$q->{'tags'} = { '$all' => [ $self->param('tag') ] };
 	}
 	$self->app->log->debug($self->dumper($q));
   my $news =  $self->backend->items->find($q);
-  $news->sort({ published => -1});
-	$news->limit(8);
+  $news->sort($sort);
+	$news->limit($limit);
 	$news->all(sub{
 			my ($cursor, $err, $docs) = @_;
 			if ($err) {
@@ -35,6 +38,9 @@ sub river {
 			}
 			else {
 				map { $self->backend->sanitize_item($_) } @$docs;
+				if ($sort->{'published'} == 1) { # not sorted in reverse chronological order
+					@$docs = sort { $b->{'published'} <=> $a->{'published'} } @$docs;
+				}
 				my $data = { items => $docs, total => scalar @$docs };
 				if ($self->param('js')) {
   				$self->render(json => $data);

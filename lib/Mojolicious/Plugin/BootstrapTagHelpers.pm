@@ -9,7 +9,7 @@ sub register {
             my ( $self, $id, $title, $body ) = @_;
             return $self->tag(
                 'div',
-                class             => "modal fade",
+                class             => "modal fade hide",
                 id                => $id,
                 tabindex          => "-1",
                 role              => "dialog",
