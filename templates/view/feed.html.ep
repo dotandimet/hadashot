@@ -1,12 +1,14 @@
 % layout 'bootstrap';
 % title 'Feeds, Now with javascript';
 <script type="text/html" id="feed_tmpl">
-<div>
-  <h4><a href="<%%= obj.link %>"><%%= obj.title %></a></h4>
-  <p><%%= todate(obj.published) %>
+<div class="entry">
+  <h4 class="title"><a href="<%%= obj.link %>"><%%= obj.title %></a></h4>
+  <p class=""><%%= todate(obj.published) %>
   <a href="/feed/debug/?_id=<%%= obj._id %>">debug</a> <i>Source: <a class="origin" href="<%%= obj.origin %>"><%%= obj.origin %></a></i></p>
 <%% if (obj.tags) { %>
-<p> tags: [ <%%= obj.tags.join(',') %> ]</p>
+<p class="tags"> tags: [ <%% obj.tags.map(function(t){return %>
+<a class="tag" href="?tag=<%%= window.encodeURIComponent(t) %>"><%%= t %></a>
+<%% }).join(','); %> ]</p>
 <%% } %>
   <%% if (obj.description) { %>
   <div class="well"><%%= obj.description %></div>
@@ -19,12 +21,12 @@
 <h1>You Going To Eat This?</h1>
 <div class="row">
 <div class="span3">
-<div class="affix">
+<div class="affix sidebar">
 <h2>Your Menu</h2>
 A sidebar, maybe?
-<ul class="nav">
-<li id="before"><a href="#">Earlier</a></li>
-<li id="after"><a href="#">Later</a></li>
+<ul class="pager">
+<li id="before" class="previous"><a href="#">Earlier</a></li>
+<li id="after" class="next"><a href="#">Later</a></li>
 </ul>
 </div>
 </div>

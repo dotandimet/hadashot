@@ -229,7 +229,7 @@ sub parse_rss_item {
 		foreach my $k (qw(title id summary guid content description content\:encoded pubDate published updated dc\:date)) {
 			my $p = $item->at($k);
 			if ($p) {
-				$h{$k} = $p->text;
+				$h{$k} = $p->text || $p->content_xml;
 				if ($k eq 'pubDate' || $k eq 'published' || $k eq 'updated' || $k eq 'dc\:date') {
 					$h{$k} = str2time($h{$k});
 				}
