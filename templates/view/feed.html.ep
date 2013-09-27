@@ -1,7 +1,7 @@
 % layout 'bootstrap';
 % title 'Feeds, Now with javascript';
 <script type="text/html" id="feed_tmpl">
-<div class="entry">
+<div class="entry" id="c<%%= obj._id %>">
   <h4 class="title"><a href="<%%= obj.link %>"><%%= obj.title %></a></h4>
   <p class=""><%%= todate(obj.published) %>
   <a href="/feed/debug/?_id=<%%= obj._id %>">debug</a> <i>Source: <a class="origin" href="<%%= obj.origin %>"><%%= obj.origin %></a></i></p>
@@ -14,23 +14,23 @@
   <div class="well"><%%= obj.description %></div>
   <%% } %>
   <%% if (obj.content) { %>
-  <div id="c<%%= obj._id %>"><%%= obj.content %></div>
+  <div class="content"><%%= obj.content %></div>
   <%% } %>
 </div>
 </script>
 <h1>You Going To Eat This?</h1>
 <div class="row">
-<div class="span3">
-<div class="affix sidebar">
+<div class="affix sidebar span3">
 <h2>Your Menu</h2>
 A sidebar, maybe?
 <ul class="pager">
 <li id="before" class="previous"><a href="#">Earlier</a></li>
 <li id="after" class="next"><a href="#">Later</a></li>
 </ul>
+<ul class="toc">
+</ul>
 </div>
-</div>
-<div id="feeds" class="span9">
+<div id="feeds" class="span9 offset3">
 <h2>Your Feed</h2>
 </div>
 </div>
@@ -56,6 +56,12 @@ A sidebar, maybe?
         first_on_page = this.items[0].published;
         $('#before a').attr('title', 'items earlier than ' + todate(last_on_page));
         $('#after a').attr('title', 'items later than ' + todate(first_on_page));
+        var toc = $('.sidebar ul.toc');
+        toc.empty();
+        $.each(this.items, function(i, val) {
+            var link = $('<a>').text(val.title).attr('href', '#c' + val._id);
+            $('<li>').appendTo(toc).append(link);
+      });
       }
     });
     $('#feeds').append(feeds.el);
