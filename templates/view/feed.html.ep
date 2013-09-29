@@ -18,19 +18,26 @@
   <%% } %>
 </div>
 </script>
-<h1>You Going To Eat This?</h1>
+<style type="text/css">
+#feeds {
+/*  overflow: auto;
+  position: relative;
+  height: 600px; */
+}
+
+</style>
 <div class="row">
-<div class="affix sidebar span3">
+<div class="affix col-md-3" id="sidebar">
 <h2>Your Menu</h2>
 A sidebar, maybe?
 <ul class="pager">
 <li id="before" class="previous"><a href="#">Earlier</a></li>
 <li id="after" class="next"><a href="#">Later</a></li>
 </ul>
-<ul class="toc">
+<ul class="toc nav nav-pills nav-stacked">
 </ul>
 </div>
-<div id="feeds" class="span9 offset3">
+<div id="feeds" class="col-md-9 col-md-offset-3">
 <h2>Your Feed</h2>
 </div>
 </div>
@@ -56,15 +63,21 @@ A sidebar, maybe?
         first_on_page = this.items[0].published;
         $('#before a').attr('title', 'items earlier than ' + todate(last_on_page));
         $('#after a').attr('title', 'items later than ' + todate(first_on_page));
-        var toc = $('.sidebar ul.toc');
+        var toc = $('#sidebar ul.toc');
         toc.empty();
         $.each(this.items, function(i, val) {
             var link = $('<a>').text(val.title).attr('href', '#c' + val._id);
             $('<li>').appendTo(toc).append(link);
       });
+        var start = '#c' + this.items[0]._id;
+        document.location=start;
+        $('.toc li:eq(0)').addClass('active');
+        $(document.body).scrollspy('refresh');
       }
     });
     $('#feeds').append(feeds.el);
+    $(document.body).scrollspy({target: '#sidebar'});
+    // $('#feeds').scrollspy({target: '#sidebar'});
     feeds.load();
     f = 1;
       $('#before a').click(earlier);
