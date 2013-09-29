@@ -62,6 +62,27 @@ sub parse_opml {
   return (values %subscriptions);
 }
 
+sub save_subscription {
+    my ( $self, $sub, $cb ) = @_;
+    my $doc;
+    $sub->{direction} = $self->get_direction( $sub->{'title'} );  # set rtl flag
+    $doc =
+      $self->feeds->find_one( { xmlUrl => $sub->{xmlUrl} } );
+    unless ($doc) {
+        my $oid = $self->feeds->insert($sub);
+        if ($oid) {
+            $self->log->info( $sub->{title}, " stored with id $oid\n" );
+            $doc = { %$sub, _id => $oid };
+        }
+    }
+    if ( $cb && ref $cb eq 'CODE' ) {
+        $cb->($doc);
+    }
+    else {
+        return $doc;
+    }
+}
+
 sub get_direction {
   my ($self, $text ) = @_;
   #my $is_bidi = ($text =~ /\p{Hebrew}+/);
