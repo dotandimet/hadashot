@@ -31,7 +31,7 @@ Latest item: <%%= new Date(obj.last) %>
 </div>
 </script>
 
-<div id="sublist">
+<div id="sublist" class="col-md-7 col-md-offset-2">
 <p>It looks like you aren't subscribed to any feeds.</p>
 <p>Use <b>Settings -> Import...</b> to load some.</p>
 </div>
@@ -39,8 +39,17 @@ Latest item: <%%= new Date(obj.last) %>
   var f = 0;
   document.onreadystatechange = 
   function(){
-    if (f == 0) {  
-    hadashot.subsLoad('#sublist', 'blogroll_tmpl', '/settings/blogroll/?js=1', 'subs');
+    if (f == 0) {
+      subs = new hadashot.collection({
+        item_template: 'blogroll_tmpl',
+        url: '/settings/blogroll',
+        args: { js: 1},
+        root: 'subs',
+        onload: function() {
+          $('#sublist').empty().append(subs.el);
+        }
+      });
+      subs.load();
     f = 1;
     }
    };

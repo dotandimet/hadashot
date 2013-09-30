@@ -24,9 +24,9 @@ sub blogroll {
   my $subs = undef;
   $subs = $self->backend->feeds->find()->all();
 	my $have_items = $self->backend->items->aggregate([ { '$group' => { '_id' => '$origin', 'items' => { '$sum' => 1 }, 'last' => { '$max' => '$published'} } } ]); 
-	$self->app->log->info($self->dumper($have_items));
+#	$self->app->log->info($self->dumper($have_items));
 	my %items_per_sub = map { $_->{_id} => [ $_->{items}, $_->{last} ] } @$have_items;
-	$self->app->log->info($self->dumper(\%items_per_sub));
+#	$self->app->log->info($self->dumper(\%items_per_sub));
 	foreach my $s (@$subs) {
 		$s->{'items'} =  $items_per_sub{$s->{xmlUrl}}[0] || 0;
 		$s->{'last'}  = $items_per_sub{$s->{xmlUrl}}[1] || 0;
@@ -64,9 +64,17 @@ sub fetch_subscriptions {
 sub add_subscription {
   my $self = shift;
   my ($url) = $self->param('url');
-
- # $self->ua->get(
-  $self->redirect_to( 'view/main' );
+  if ($url) {
+    $self->render_later();
+    $self->backend->find_feeds($url, sub {
+      $self->app->log->info($self->dumper($_)) for (@_);
+      $self->backend->save_subscription($_[0]);
+      $self->redirect_to('/view/main');
+    });
+  }
+  else {
+    $self->render(text => 'I require a url');
+  }
 }
 
 1;
