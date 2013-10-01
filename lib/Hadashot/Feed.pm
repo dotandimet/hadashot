@@ -37,7 +37,9 @@ sub river {
 				$self->render(text => "Got nothing :( = " . $self->dumper($cursor->explain()));
 			}
 			else {
+        
 				map { $self->backend->sanitize_item($_) } @$docs;
+        map { $self->backend->set_item_direction($_) } @$docs;
 				if ($sort->{'published'} == 1) { # not sorted in reverse chronological order
 					@$docs = sort { $b->{'published'} <=> $a->{'published'} } @$docs;
 				}

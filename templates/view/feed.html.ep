@@ -2,7 +2,7 @@
 % title 'Feeds, Now with javascript';
 <script type="text/html" id="feed_tmpl">
 <div class="entry" id="c<%%= obj._id %>">
-  <h4 class="title"><a href="<%%= obj.link %>"><%%= obj.title %></a></h4>
+  <h4 class="title"><a href="<%%= obj.link %>" dir="<%%= obj.title.dir %>"><%%= obj.title.content %></a></h4>
   <p class=""><%%= todate(obj.published) %>
   <a href="/feed/debug/?_id=<%%= obj._id %>">debug</a> <i>Source: <a class="origin" href="<%%= obj.origin %>"><%%= obj.origin %></a></i></p>
 <%% if (obj.tags) { %>
@@ -10,11 +10,11 @@
 <a class="tag" href="?tag=<%%= window.encodeURIComponent(t) %>"><%%= t %></a>
 <%% }).join(','); %> ]</p>
 <%% } %>
-  <%% if (obj.description) { %>
-  <div class="well"><%%= obj.description %></div>
-  <%% } %>
   <%% if (obj.content) { %>
-  <div class="content"><%%= obj.content %></div>
+  <div class="content" dir="<%%= obj.content.dir %>"><%%= obj.content.content %></div>
+  <%% } %>
+  <%% if (obj.description) { %>
+  <div class="well" dir="<%%= obj.description.dir %>"><%%= obj.description.content %></div>
   <%% } %>
 </div>
 </script>
@@ -64,7 +64,7 @@ A sidebar, maybe?
         var toc = $('#sidebar ul.toc');
         toc.empty();
         $.each(this.items, function(i, val) {
-            var link = $('<a>').text(val.title).attr('href', '#c' + val._id);
+            var link = $('<a>').text(val.title.content).attr('href', '#c' + val._id).attr('dir', val.title.dir);
             $('<li>').appendTo(toc).append(link);
       });
         var start = '#c' + this.items[0]._id;

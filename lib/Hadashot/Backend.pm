@@ -304,7 +304,9 @@ sub parse_rss_item {
 sub set_item_direction {
   my ($self, $item) = @_;
 	for my $field (qw(content description title)) {
-    $item->{$field} = { dir => $self->get_direction($item->{$field}), content => $item->{$field} };
+    if ($item->{$field}) {
+      $item->{$field} = { dir => $self->get_direction($item->{$field}), content => $item->{$field} };
+    }
   }
   return $item;
 }
