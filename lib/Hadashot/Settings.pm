@@ -67,10 +67,14 @@ sub add_subscription {
   if ($url) {
     $self->render_later();
     $self->backend->find_feeds($url, sub {
-      $self->app->log->info("got: @_");
+      $self->render(text => "No feeds found for $url :(") && return unless (@_ > 0);
       $self->app->log->info($self->dumper($_)) for (@_);
-      $self->backend->save_subscription($_[0]);
-      $self->redirect_to('/view/main');
+      my $feed = shift; # TODO add support for multiple feeds later ...
+      my $sub = $self->backend->save_subscription($feed);
+      $self->backend->process_feeds( [ $sub ], sub {
+        $self->redirect_to( $self->url_for('/view/feed')->query({src =>
+        $sub->{xmlUrl} }) );
+      } );  
     });
   }
   else {

@@ -53,7 +53,7 @@ sub parse_opml {
   }
   # assign categories
   for my $cat (keys %categories) {
-	$self->log->info( "category $cat\n" );
+	$self->log->debug( "category $cat\n" );
 	for my $rss ($categories{$cat}->each) {
 		$subscriptions{$rss}{'categories'} ||= [];
 		push @{$subscriptions{$rss}{'categories'}}, $cat;
@@ -64,6 +64,11 @@ sub parse_opml {
 
 sub save_subscription {
     my ( $self, $sub, $cb ) = @_;
+    unless ($sub->{xmlUrl} && $sub->{title}) { 
+      $self->log->warn("Missing fields - will not save object" .
+      $self->json($sub));
+      return; # will not call your callback, will return undef.
+    }
     my $doc;
 #    $sub->{direction} = $self->get_direction( $sub->{'title'} );  # set rtl flag
     $doc =
@@ -155,19 +160,28 @@ sub process_feed {
     	$self->parse_rss( 
 				$res->content->asset,
 				sub {
-					my $item = pop; 
-					$item->{'origin'} = $url; # save our source feed...
-          # fix relative links - because Sam Ruby is a wise-ass
-          $item->{'link'} = $self->abs_url($item->{'link'}, $item->{'origin'});
-         if ($item->{'link'} =~ m/feedproxy/) { # cleanup feedproxy links
-            $self->unshorten_url($item->{'link'}, sub {
-              $item->{'link'} = $self->cleanup_feedproxy($_[0]);
-					    $self->store_feed_item( $item ); 
+          my $feed = pop;
+          # update sub general properties
+          for my $field (qw(title subtitle description htmlUrl)) {
+            if ($feed->{$field} && ( ! exists $sub->{$field} ||
+            $feed->{$field} ne $sub->{$field} )) {
+                $sub->{$field} = $feed->{$field};
+            }
+          }
+          foreach my $item (@{$feed->{'items'}}) {
+  					$item->{'origin'} = $url; # save our source feed...
+            # fix relative links - because Sam Ruby is a wise-ass
+            $item->{'link'} = $self->abs_url($item->{'link'}, $item->{'origin'});
+           if ($item->{'link'} =~ m/feedproxy/) { # cleanup feedproxy links
+              $self->unshorten_url($item->{'link'}, sub {
+                $item->{'link'} = $self->cleanup_feedproxy($_[0]);
+					      $self->store_feed_item( $item ); 
             } );
           } else {
   					$self->store_feed_item( $item );
           }  
 				 }
+			 }
 			);
       $sub->{'active'} = 1;
     }
@@ -224,38 +238,36 @@ sub parse_rss {
 	my ($self, $rss_file, $cb) = @_;
   my $rss_str  = decode 'UTF-8', (ref $rss_file) ? $rss_file->slurp : slurp $rss_file;
   my $d = $self->dom->parse($rss_str);
+  my $feed = $self->parse_rss_channel($d); # Feed properties
 	my $items = $d->find('item');
 	my $entries = $d->find('entry'); # Atom
   my $res = [];
 	foreach my $item ($items->each, $entries->each) {
 		push @$res, $self->parse_rss_item($item);
 	}
-	if ($cb) {
-		foreach my $h (@$res) {
-			$self->$cb($h);
-		}
-	}
 	# get channel properties:
 	#foreach my $k (qw(
-  return $res;
+  if (@$res) {
+    $feed->{'items'} = $res;
+  }
+ 	if ($cb) {
+    $self->$cb($feed);
+	}
+ return $feed;
 }
 
 sub parse_rss_channel {
   my ($self, $dom) = @_;
   my $info = {};
-  foreach my $k (qw(title subtitle description)) {
+  foreach my $k (qw{title subtitle description link:not([rel])}) {
     my $p = $dom->at("channel > $k") || $dom->at("feed > $k"); # direct child
     if ($p) {
-      $info->{$k} = $p->text || $p->content_xml;
+      $info->{$k} = $p->text || $p->content_xml || $p->attr('href');
     }
   }
-  my @links = ($dom->find('channel > link')->each, $dom->find('feed > link')->each);
-  $info->{links} = [] if (@links);
-  foreach my $link (@links) {
-     push @{ $info->{links} }, { %{$link->attr}, url => $link->text }; 
-  }
+  $info->{htmlUrl} = delete $info->{'link:not([rel])'};
   
-  $self->log->info("Parsed feed info from rss: " . $self->json->encode($info) );
+  $self->log->debug("Parsed feed info from rss: " . $self->json->encode($info) );
   return $info;
 }
 
@@ -357,7 +369,7 @@ sub unshorten_url {
 }
 sub abs_url {
   my ($self, $url, $base) = @_;
-  if (Mojo::URL->new($url)->host eq '') {
+  if (!$url || ! Mojo::URL->new($url)->host) {
     $url =
       Mojo::URL->new($base)->path($url)->to_abs->to_string;
   }
@@ -379,15 +391,48 @@ sub cleanup_feedproxy {
 # to get just the url
 sub find_feeds {
   my $self = shift;
-  my $url = shift;
-  my ($base_uri, $cb);
-  if (@_) {
-    $cb = pop @_ if (ref $_[-1] eq 'CODE');
-    $base_uri = shift;
+  my $url  = shift;
+  my $cb   = ( ref $_[-1] eq 'CODE' ) ? pop @_ : undef;
+  my @feeds;
+  $self->ua->max_redirects(5)->connect_timeout(30);
+  if ($cb) {  # non-blocking
+    $self->ua->get(
+      $url,
+      sub {
+        my ( $ua, $tx ) = @_;
+        if ( $tx->success ) {
+          @feeds = $self->_find_feed_links( $url, $tx->res );
+          $cb->(@feeds);
+        }
+        else {
+          my ( $err, $code ) = $tx->error;
+          $self->log->warn( $code
+            ? "$code response: $err"
+            : "Connection error: $err" );
+        }
+      }
+    );
+    Mojo::IOLoop->start unless Mojo::IOLoop->is_running;
   }
-  
+  else {
+    my $tx = $self->ua->get($url);
+    if ( $tx->success ) {
+      @feeds = $self->_find_feed_links( $url, $tx->res );
+    }
+    else {
+      my ( $err, $code ) = $tx->error;
+      $self->log->warn(
+        $code ? "$code response: $err" : "Connection error: $err" );
+    }
+  }
+  return @feeds;
+}
+
+sub _find_feed_links {
+  my ( $self, $url, $res ) = @_;
   my %is_feed = map { $_ => 1 } (
-  # feed mime-types:
+
+    # feed mime-types:
     'application/x.atom+xml',
     'application/atom+xml',
     'application/xml',
@@ -395,53 +440,54 @@ sub find_feeds {
     'application/rss+xml',
     'application/rdf+xml',
   );
-  my $feed_ext = qr/\.(?:rss|xml|rdf)$/;
+  state $feed_ext = qr/\.(?:rss|xml|rdf)$/;
   my @feeds;
-  $self->ua->get($url, sub {
-    my ($ua, $tx) = @_;
-    if ($tx->success) {
-      # use split to remove charset attribute from content_type
-      my ($content_type) = split(/[; ]+/, $tx->res->headers->content_type);
-      if ($is_feed{$content_type}) {
-        my $info = $self->parse_rss_channel($tx->res->dom);
-        $info->{'xmlUrl'} = $url;
-        push @feeds, $info;
-      }
-      else {
-        my $base = ($tx->res->dom->find('head base')->pluck('attr', 'href')->join(q{}) || $url);
-        $tx->res->dom->find('head link')->each(sub {
-         my $attrs = $_->attr();
-         return unless ($attrs->{'rel'});
-         my %rel = map { $_ => 1 } split /\s+/, lc($attrs->{'rel'});
-         my $type = ($attrs->{'type'}) ? lc trim $attrs->{'type'} : '';
-          if ( $is_feed{$type}
-            && ( $rel{'alternate'} || $rel{'service.feed'} ) ) {
-          push @feeds, { xmlUrl => $self->abs_url( $attrs->{'href'}, $base ),
-          title => $attrs->{'title'} };
-          }
-      });
-    $tx->res->dom->find('a')->grep(
-        sub {
-            $_->attr('href')
-              && Mojo::URL->new( $_->attr('href') )->path =~ /$feed_ext/io;
-        }
-      )->each(
-        sub {
-            push @feeds,
-              {
-                xmlUrl => $self->abs_url( $_->attr('href'), $base ),
-                title  => $_->text
-              };
-        }
-      );
-    }
-   }
-  if ($cb) {
-    $cb->(@feeds);
+
+  # use split to remove charset attribute from content_type
+  my ($content_type) = split( /[; ]+/, $res->headers->content_type );
+  if ( $is_feed{$content_type} ) {
+    my $info = $self->parse_rss_channel( $res->dom );
+    $info->{'xmlUrl'} = $url;
+    $info->{'htmlUrl'} = $self->abs_url($info->{'htmlUrl'}, $url); # thank you Atom
+    push @feeds, $info;
   }
-  });
-  if ($cb) {
-    $cb->(@feeds);
+  else {
+  # we are in a web page. PHEAR.
+    my $base =
+      ( $res->dom->find('head base')->pluck( 'attr', 'href' )->join(q{})
+        || $url );
+    my $title = $res->dom->at('head > title')->text || $url;
+    $res->dom->find('head link')->each(
+      sub {
+        my $attrs = $_->attr();
+        return unless ( $attrs->{'rel'} );
+        my %rel = map { $_ => 1 } split /\s+/, lc( $attrs->{'rel'} );
+        my $type = ( $attrs->{'type'} ) ? lc trim $attrs->{'type'} : '';
+        if ( $is_feed{$type}
+          && ( $rel{'alternate'} || $rel{'service.feed'} ) )
+        {
+          push @feeds,
+            {
+            xmlUrl => $self->abs_url( $attrs->{'href'}, $base ),
+            title  => join ' ', ( $title, $attrs->{'title'} || '' )
+            };
+        }
+      }
+    );
+    $res->dom->find('a')->grep(
+      sub {
+        $_->attr('href')
+          && Mojo::URL->new( $_->attr('href') )->path =~ /$feed_ext/io;
+      }
+      )->each(
+      sub {
+        push @feeds,
+          {
+          xmlUrl => $self->abs_url( $_->attr('href'), $base ),
+          title  => $_->text || $_->attr('title') || $title
+          };
+      }
+      );
   }
   return @feeds;
 }
