@@ -1,3 +1,6 @@
+perl script/hadashot eval 'app->backend->find_feeds($_, sub { say app->dumper($_) for @_; }) for (qw{http://corky.net http://www.intertwingly.net/blog/ http://corky.net/dotan/ http://corky.net/dotan/feed http://intertwingly.net/blog/index.atom http://www.ursulium.com http://arcfinity.tumblr.com/ http://arcfinity.tumblr.com/rss} );'
+
+
 script/hadashot eval 'use Hadashot::Backend; my $h = Hadashot::Backend->new; $h->load_subs; print $_->{xmlUrl}, "\n" for ($h->subscriptions->each); $h->fetch_subscriptions(app()->ua);'
 
 perl -MMojo::DOM -MMojo::Util=decode,slurp -E 'my $c = decode q{UTF-8}, slurp q{bazek}; my $d = Mojo::DOM->new($c); say $_->find(q{title})->pluck(q{text}), q{ }, $_->find(q{link})->pluck(q{text}) for ($d->find(q{item})->each);'

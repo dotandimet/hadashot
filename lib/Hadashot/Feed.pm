@@ -56,7 +56,7 @@ sub river {
 
 sub debug {
     my ($self) = @_;
-    my ( $ass, $item, @keys, $parse, $error );
+    my ( $ass, $item, @keys, $reparse, $error );
     if ( $self->param('_id') ) {
         $item = $self->backend->items->find_one( bson_oid $self->param('_id') );
         $ass  = Mojo::Asset::Memory->new;
@@ -69,24 +69,24 @@ sub debug {
         $self->app->log->debug( $ass->slurp );
     }
 
-    my $parse;
     eval {
-        $parse = $self->backend->parse_rss($ass);
+        my $parse = $self->backend->parse_rss($ass);
         $self->app->log->debug( $self->dumper($parse) );
+        $reparse = $parse->{'items'}[0];
     };
     if ($@) {
         $self->app->log->error("Error parsing: $@");
         $error = $@;
         @keys  = ();
+        $reparse = {};
     }
     else {
-        @keys = sort { length {$a} <=> length($b) }
-          uniq( keys %$item, keys %{ $parse->[0] } );
+        @keys = sort { length $a <=> length $b }
+          uniq( keys %$item, keys %$reparse );
     }
     $self->render(
         item => $item,
-        parse =>
-          ( ( ref $parse eq 'ARRAY' && @$parse > 0 ) ? $parse->[0] : {} ),
+        parse => $reparse,
         error => undef,
         keys  => \@keys
     );
