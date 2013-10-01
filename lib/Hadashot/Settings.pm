@@ -67,6 +67,7 @@ sub add_subscription {
   if ($url) {
     $self->render_later();
     $self->backend->find_feeds($url, sub {
+      $self->app->log->info("got: @_");
       $self->app->log->info($self->dumper($_)) for (@_);
       $self->backend->save_subscription($_[0]);
       $self->redirect_to('/view/main');

@@ -243,13 +243,19 @@ sub parse_rss {
 sub parse_rss_channel {
   my ($self, $dom) = @_;
   my $info = {};
-  my $root = $dom->at('channel') || $dom->at('feed');
-  $info->{'title'} = $root->at('title')->text();
-  $info->{'subtitle'} = $root->at('subtitle')->text();
-  $info->{'htmlUrl'} = $root->at('link')->text();
-  $info->{'description'} = $root->at('description')->text();
-  $self->log->info("Parsed feed info from rss: " . join q{ }, map { $_ . ' = '
-  . $info->{$_} } keys %$info);
+  foreach my $k (qw(title subtitle description)) {
+    my $p = $dom->at("channel > $k") || $dom->at("feed > $k"); # direct child
+    if ($p) {
+      $info->{$k} = $p->text || $p->content_xml;
+    }
+  }
+  my @links = ($dom->find('channel > link')->each, $dom->find('feed > link')->each);
+  $info->{links} = [] if (@links);
+  foreach my $link (@links) {
+     push @{ $info->{links} }, { %{$link->attr}, url => $link->text }; 
+  }
+  
+  $self->log->info("Parsed feed info from rss: " . $self->json->encode($info) );
   return $info;
 }
 
@@ -394,7 +400,9 @@ sub find_feeds {
   $self->ua->get($url, sub {
     my ($ua, $tx) = @_;
     if ($tx->success) {
-      if ($is_feed{$tx->res->headers->content_type}) {
+      # use split to remove charset attribute from content_type
+      my ($content_type) = split(/[; ]+/, $tx->res->headers->content_type);
+      if ($is_feed{$content_type}) {
         my $info = $self->parse_rss_channel($tx->res->dom);
         $info->{'xmlUrl'} = $url;
         push @feeds, $info;
@@ -432,6 +440,9 @@ sub find_feeds {
     $cb->(@feeds);
   }
   });
+  if ($cb) {
+    $cb->(@feeds);
+  }
   return @feeds;
 }
 

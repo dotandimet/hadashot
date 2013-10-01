@@ -46,7 +46,9 @@ Latest item: <%%= new Date(obj.last) %>
         args: { js: 1},
         root: 'subs',
         onload: function() {
-          $('#sublist').empty().append(subs.el);
+          if (this.items.length > 0) {
+          $('#sublist').empty().append(this.el);
+          }
         }
       });
       subs.load();
