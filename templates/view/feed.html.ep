@@ -46,6 +46,11 @@ A sidebar, maybe?
   function todate(tim) {
     return new Date(parseInt(tim));
   };
+  function dirp(od) {
+    return (od === 'rtl') 
+      ? 'align="right" dir="rtl"' 
+      : 'align="left" dir="ltr"';
+   };
   var f = 0;
   document.onreadystatechange = 
   function(){
@@ -67,8 +72,8 @@ A sidebar, maybe?
             var link = $('<a>').text(val.title.content).attr('href', '#c' + val._id).attr('dir', val.title.dir);
             $('<li>').appendTo(toc).append(link);
       });
-        var start = '#c' + this.items[0]._id;
-        document.location.hash=start;
+//        var start = '#c' + this.items[0]._id;
+ //      document.location.hash=start;
         $('.toc li:eq(0)').addClass('active');
         $(document.body).scrollspy('refresh');
       }

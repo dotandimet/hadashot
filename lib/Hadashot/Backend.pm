@@ -338,9 +338,9 @@ sub sanitize_item {
 		if ($item->{$field} && $item->{$field} =~ /\<(script|base)/) {
 			$item->{$field} = $self->dom->parse($item->{$field})->find('script,base')->remove()->to_xml;
 		}
-    if ($item->{$field} && $item->{$field} =~ /\<font/) {
-      $item->{$field} = $self->dom->parse($item->{$field})->find('font')->strip();
-    }
+#    if ($item->{$field} && $item->{$field} =~ /\<font/) {
+#      $item->{$field} = $self->dom->parse($item->{$field})->find('font')->strip();
+#    }
 	}
 }
 

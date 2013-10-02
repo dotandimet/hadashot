@@ -1,37 +1,34 @@
 % layout 'bootstrap';
 % title 'Now with javascript';
 <script type="text/html" id="blogroll_tmpl">
-<div>
+<div class="list-group-item">
+<div class="list-group-item-heading">
 <%% if (!obj.active || obj.active === 0) { %><del> <%% } %>
 <a href="<%%=obj.xmlUrl%>"><i class="icon-rss"></i> rss</a>
 <a href="<%%=obj.htmlUrl%>" dir="ltr"><%%=obj.title%></a>
-<a href="/view/feed?src=<%%= window.encodeURIComponent(obj.xmlUrl) %>" dir="ltr">go</a>
+<%% if (obj.items) { %>
+<a href="/view/feed?src=<%%= window.encodeURIComponent(obj.xmlUrl) %>"
+title="<%%=  (obj.last && obj.last > 0) ? 'Latest item: ' + new Date(obj.last) : '...' %>"
+data-toggle="tooltip"
+class="badge"><%%= obj.items %></a>
+<%% } %>
+</div>
+<div class="list-group-item-text">
 <%% if (obj.categories) { %>
 <strong>Categories: </strong> [ <%%= obj.categories.join(', ') %> ]
-<%% } else {console.log(obj.xmlUrl)} %>
-<%% if (obj.etag) { %>
-Etag: <%%= obj.etag %>
-<%% } %>
+<%% } else {console.log(obj.xmlUrl + ' is uncategorized')} %>
 <%% if (obj.last_modified) { %>
 Last Modified: <%%= obj.last_modified %>
 <%% } %>
-<%% if (obj.items) { %>
-Items: <%%= obj.items %>
-<%% } else { %>
-0 Items
+<%% if (obj.etag) { %>
+Etag: <%%= obj.etag %>
 <%% } %>
-<%% if (obj.last && obj.last > 0) { %>
-Latest item: <%%= new Date(obj.last) %>
-<%% } else { %>
-...
+</div>
 <%% if (!obj.active || obj.active === 0) { %></del> <%% } %>
-<%% } %>
-
-
 </div>
 </script>
 
-<div id="sublist" class="col-md-7 col-md-offset-2">
+<div id="sublist" class="col-md-7 col-md-offset-2 list-group">
 <p>It looks like you aren't subscribed to any feeds.</p>
 <p>Use <b>Settings -> Import...</b> to load some.</p>
 </div>
@@ -48,6 +45,7 @@ Latest item: <%%= new Date(obj.last) %>
         onload: function() {
           if (this.items.length > 0) {
           $('#sublist').empty().append(this.el);
+          $('#sublist .badge').tooltip();
           }
         }
       });
