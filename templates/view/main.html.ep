@@ -15,7 +15,7 @@ class="badge"><%%= obj.items %></a>
 </div>
 <div class="list-group-item-text">
 <%% if (obj.categories) { %>
-<strong>Categories: </strong> [ <%%= obj.categories.join(', ') %> ]
+<%%= $.map(obj.categories, function(v,i) { return '<span class="label label-default">' + v + '</span>'; }).join(' ') %>
 <%% } else {console.log(obj.xmlUrl + ' is uncategorized')} %>
 <%% if (obj.last_modified) { %>
 Last Modified: <%%= obj.last_modified %>
