@@ -82,4 +82,14 @@ sub add_subscription {
   }
 }
 
+sub load_and_go {
+  my $self = shift;
+  $self->render_later();
+	my $subs = $self->backend->feeds->find( { xmlUrl => $self->param('src') } )->all;
+  $self->backend->process_feeds( $subs, sub {
+                  $self->redirect_to( $self->url_for('/view/feed')->query({src =>
+                                  $subs->[0]->{xmlUrl} }) );
+                  } );
+}
+
 1;
