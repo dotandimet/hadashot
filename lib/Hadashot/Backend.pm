@@ -258,23 +258,24 @@ sub parse_rss {
 
 sub parse_rss_channel {
   my ($self, $dom) = @_;
-  my $info = {};
-  foreach my $k (qw{title subtitle description link:not([rel])}) {
+  my %info;
+  foreach my $k (qw{title subtitle description tagline link:not([rel]) link[rel=alternate]}) {
     my $p = $dom->at("channel > $k") || $dom->at("feed > $k"); # direct child
     if ($p) {
-      $info->{$k} = $p->text || $p->content_xml || $p->attr('href');
+      $info{$k} = $p->text || $p->content_xml || $p->attr('href');
     }
   }
-  $info->{htmlUrl} = delete $info->{'link:not([rel])'};
+  ($info{htmlUrl}) = grep { defined $_ } map { delete $info{$_} } ('link:not([rel])','link[rel=alternate]');
+  ($info{description}) = grep { defined $_ } ( @info{qw(description tagline subtitle)} ); 
   
-  $self->log->debug("Parsed feed info from rss: " . $self->json->encode($info) );
-  return $info;
+  $self->log->debug("Parsed feed info from rss: " . $self->json->encode(\%info) );
+  return \%info;
 }
 
 sub parse_rss_item {
 		my ($self, $item) = @_;
 		my %h;
-		foreach my $k (qw(title id summary guid content description content\:encoded pubDate published updated dc\:date)) {
+		foreach my $k (qw(title id summary guid content description content\:encoded xhtml\:body pubDate published updated dc\:date)) {
 			my $p = $item->at($k);
 			if ($p) {
 				$h{$k} = $p->text || $p->content_xml;
@@ -303,17 +304,23 @@ sub parse_rss_item {
     });
 		# find tags:
 		my @tags;
-		$item->find('category')->each(sub { push @tags, $_[0]->text || $_[0]->attr('term') } );
+		$item->find('category, dc\:subject')->each(sub { push @tags, $_[0]->text || $_[0]->attr('term') } );
 		if (@tags) {
 			$h{'tags'} = \@tags;
 		}
     #
 		# normalize fields:
-		my %replace = ( 'content\:encoded' => 'content', 'pubDate' => 'published', 'dc\:date' => 'published', 'summary' => 'description', 'updated' => 'published', 'guid' => 'link' );
+		my %replace = ( 'content\:encoded' => 'content', 'xhtml\:body' => 'content', 'pubDate' => 'published', 'dc\:date' => 'published', 'summary' => 'description', 'updated' => 'published', 'guid' => 'link' );
 		while (my ($old, $new) = each %replace) {
 		if ($h{$old} && ! $h{$new}) {
 			$h{$new} = delete $h{$old};
 		}
+    }
+    my %copy = ('description' => 'content', link => 'id',  guid => 'id');
+    while (my ($fill, $required) = each %copy) {
+      if ($h{$fill} && ! $h{$required}) {
+        $h{$required} = $h{$fill};
+      }
     }
     $h{"_raw"} = $item->to_xml;
 		return \%h;
