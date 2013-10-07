@@ -1,0 +1,66 @@
+% layout 'ember';
+% title 'Now with javascript';
+<script type="text/x-handlebars">
+{{outlet}}
+</script>
+
+<script type="text/x-handlebars" id="blogroll">
+<div id="sublist" class="col-md-7 col-md-offset-2 list-group">
+{{#each subs}}
+<div class="list-group-item">
+<div class="list-group-item-heading">
+{{#unless active }}<del> {{/unless}}
+<a href="{{unbound xmlUrl}}"><i class="icon-rss"></i> rss</a>
+<a href="{{unbound htmlUrl}}" dir="ltr">{{title}}</a>
+<a href="/settings/load_and_go?src={{unbound xmlUrl}}"
+title="{{#if last}}Latest item: {{unbound last}} {{else}}...{{/if}}"
+data-toggle="tooltip"
+class="badge">{{items}}</a>
+</div>
+<div class="list-group-item-text">
+{{#each categories}}
+<span class="label label-default">{{this}}</span>
+{{else}}
+Uncategorized
+{{/each}}
+{{#if last_modified}}
+Last Modified: {{last_modified}}
+{{/if}}
+{{#if etag}}
+Etag: {{etag}}
+{{/if}}
+</div>
+{{#unless active }}</del> {{/unless}}
+</div>
+{{else}}
+<p>It looks like you aren't subscribed to any feeds.</p>
+<p>Use <b>Settings -> Import...</b> to load some.</p>
+</div>
+{{/each}}
+</script>
+
+<script language="javascript">
+/**
+  var f = 0;
+  document.onreadystatechange = 
+  function(){
+    if (f == 0) {
+      subs = new hadashot.collection({
+        item_template: 'blogroll_tmpl',
+        url: '/settings/blogroll',
+        args: { js: 1},
+        root: 'subs',
+        onload: function() {
+          if (this.items.length > 0) {
+          $('#sublist').empty().append(this.el);
+          $('#sublist .badge').tooltip();
+          }
+        }
+      });
+      subs.load();
+    f = 1;
+    }
+   };
+*/
+</script>
+
