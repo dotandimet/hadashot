@@ -66,7 +66,7 @@ sub save_subscription {
     my ( $self, $sub, $cb ) = @_;
     unless ($sub->{xmlUrl} && $sub->{title}) { 
       $self->log->warn("Missing fields - will not save object" .
-      $self->json($sub));
+      $self->json->encode($sub));
       return; # will not call your callback, will return undef.
     }
     my $doc;
