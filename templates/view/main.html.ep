@@ -6,8 +6,8 @@
 <%% if (!obj.active || obj.active === 0) { %><del> <%% } %>
 <a href="<%%=obj.xmlUrl%>"><i class="icon-rss"></i> rss</a>
 <a href="<%%=obj.htmlUrl%>" dir="ltr"><%%=obj.title%></a>
-<a href="/settings/load_and_go?src=<%%= window.encodeURIComponent(obj.xmlUrl) %>"
-title="<%%=  (obj.last && obj.last > 0) ? 'Latest item: ' + new Date(obj.last) : '...' %>"
+<a href="/view/feed?src=<%%= window.encodeURIComponent(obj.xmlUrl) %>"
+title="<%%=  (obj.last && obj.last > 0) ? 'Latest item: ' + moment(obj.last).fromNow() : '...' %>"
 data-toggle="tooltip"
 class="badge"><%%= (obj.items) ? obj.items : 0 %></a>
 </div>
@@ -16,7 +16,7 @@ class="badge"><%%= (obj.items) ? obj.items : 0 %></a>
 <%%= $.map(obj.categories, function(v,i) { return '<span class="label label-default">' + v + '</span>'; }).join(' ') %>
 <%% } else {console.log(obj.xmlUrl + ' is uncategorized')} %>
 <%% if (obj.last_modified) { %>
-Last Modified: <%%= obj.last_modified %>
+Last Modified: <%%= moment(obj.last_modified).fromNow() %>
 <%% } %>
 <%% if (obj.etag) { %>
 Etag: <%%= obj.etag %>

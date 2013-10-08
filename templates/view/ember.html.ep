@@ -12,8 +12,8 @@
 {{#unless active }}<del> {{/unless}}
 <a href="{{unbound xmlUrl}}"><i class="icon-rss"></i> rss</a>
 <a href="{{unbound htmlUrl}}" dir="ltr">{{title}}</a>
-<a href="/settings/load_and_go?src={{unbound xmlUrl}}"
-title="{{#if last}}Latest item: {{unbound last}} {{else}}...{{/if}}"
+<a href="/view/feed?src={{unbound xmlUrl}}"
+title="{{unbound last}}"
 data-toggle="tooltip"
 class="badge">{{items}}</a>
 </div>
