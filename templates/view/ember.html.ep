@@ -13,7 +13,7 @@
 <a href="{{unbound xmlUrl}}"><i class="icon-rss"></i> rss</a>
 <a href="{{unbound htmlUrl}}" dir="ltr">{{title}}</a>
 <a href="/view/feed?src={{unbound xmlUrl}}"
-title="{{unbound last}}"
+title="{{date last}}"
 data-toggle="tooltip"
 class="badge">{{items}}</a>
 </div>
@@ -24,7 +24,7 @@ class="badge">{{items}}</a>
 Uncategorized
 {{/each}}
 {{#if last_modified}}
-Last Modified: {{last_modified}}
+Last Modified: {{date last_modified}}
 {{/if}}
 {{#if etag}}
 Etag: {{etag}}

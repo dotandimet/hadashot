@@ -64,12 +64,12 @@
 % end
 % end
 
-     %= javascript "//code.jquery.com/jquery.js"
-     %= javascript url_for("/js/bootstrap.min.js")
-     %= javascript url_for('/js/hadashot.js') 
-     <script src="/js/libs/jquery-1.9.1.js"></script>
-     <script src="/js/libs/handlebars-1.0.0.js"></script>
-     <script src="/js/libs/ember-1.0.0.js"></script>
-     <script src="/js/app.js"></script>
+     %= javascript url_for('/js/libs/jquery-1.9.1.js')
+     %= javascript url_for("/js/libs/bootstrap-3.0.0.js")
+     %= javascript url_for('/js/libs/handlebars-1.0.0.js')
+     %= javascript url_for('/js/libs/ember-1.0.0.js')
+     %= javascript url_for('/js/libs/moment-2.2.1.js')
+     %= javascript url_for('/js/libs/moment-timezone-0.0.1.js')
+     %= javascript url_for('/js/ember-app.js')
   </body>
 </html>

@@ -64,8 +64,8 @@
 % end
 % end
 
-     %= javascript "//code.jquery.com/jquery.js"
-     %= javascript url_for("/js/bootstrap.min.js")
+     %= javascript url_for('/js/libs/jquery-1.9.1.js')
+     %= javascript url_for("/js/libs/bootstrap-3.0.0.js")
      %= javascript url_for('/js/libs/moment-2.2.1.js')
      %= javascript url_for('/js/libs/moment-timezone-0.0.1.js')
      %= javascript url_for('/js/hadashot.js')

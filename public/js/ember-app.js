@@ -9,3 +9,7 @@ App.BlogrollRoute = Ember.Route.extend({
     return $.getJSON('/settings/blogroll', {js : 1})
   }
 })
+
+Ember.Handlebars.registerBoundHelper('date', function(date) {
+ return moment(date).fromNow();
+});
