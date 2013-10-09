@@ -79,7 +79,7 @@ A sidebar, maybe?
       }
     });
     $('#feeds').append(feeds.el);
-    $(document.body).scrollspy({target: '#sidebar'});
+    $(document.body).scrollspy({target: '#sidebar', offset: 80});
     // $('#feeds').scrollspy({target: '#sidebar'});
     feeds.load();
     f = 1;
