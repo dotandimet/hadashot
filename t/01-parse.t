@@ -79,4 +79,14 @@ $entry = $feed->{items}[0];
 ok(!$entry->{issued});   ## Should return undef, but not die.
 ok(!$entry->{modified}); ## Same.
 
+# summary vs. itunes:summary:
+
+$feed = $t->app->backend->parse_rss('t/samples/itunes_summary.xml')
+  or die "parse failed";
+$entry = $feed->{items}[0];
+isnt($entry->{summary}, 'This is for &8220;itunes sake&8221;.');
+is($entry->{description}, 'this is a <b>test</b>');
+is($entry->{content}, '<p>This is more of the same</p>
+');
+
 done_testing();

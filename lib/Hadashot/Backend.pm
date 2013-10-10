@@ -278,6 +278,9 @@ sub parse_rss_item {
 		foreach my $k (qw(title id summary guid content description content\:encoded xhtml\:body pubDate published updated dc\:date)) {
 			my $p = $item->at($k);
 			if ($p) {
+        # skip namespaced items - like itunes:summary - unless explicitly
+        # searched:
+        next if ($p->type =~ /\:/ && $k ne 'content\:encoded' && $k ne 'xhtml\:body' && 'dc\:date');
 				$h{$k} = $p->text || $p->content_xml;
 				if ($k eq 'pubDate' || $k eq 'published' || $k eq 'updated' || $k eq 'dc\:date') {
 					$h{$k} = str2time($h{$k});
