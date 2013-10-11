@@ -159,29 +159,9 @@ sub process_feed {
       }
     	$self->parse_rss( 
 				$res->content->asset,
-				sub {
-          my $feed = pop;
-          # update sub general properties
-          for my $field (qw(title subtitle description htmlUrl)) {
-            if ($feed->{$field} && ( ! exists $sub->{$field} ||
-            $feed->{$field} ne $sub->{$field} )) {
-                $sub->{$field} = $feed->{$field};
-            }
-          }
-          foreach my $item (@{$feed->{'items'}}) {
-  					$item->{'origin'} = $url; # save our source feed...
-            # fix relative links - because Sam Ruby is a wise-ass
-            $item->{'link'} = $self->abs_url($item->{'link'}, $item->{'origin'});
-           if ($item->{'link'} =~ m/feedproxy/) { # cleanup feedproxy links
-              $self->unshorten_url($item->{'link'}, sub {
-                $item->{'link'} = $self->cleanup_feedproxy($_[0]);
-					      $self->store_feed_item( $item ); 
-            } );
-          } else {
-  					$self->store_feed_item( $item );
-          }  
-				 }
-			 }
+        sub {
+          $self->update_feed($sub, @_);
+        }
 			);
       $sub->{'active'} = 1;
     }
@@ -199,6 +179,29 @@ sub process_feed {
   $self->feeds->update({ _id => $sub->{'_id'} }, $sub);
 }
 
+sub update_feed {
+  my ($self, $sub, $feed) = @_;
+# update sub general properties
+  for my $field (qw(title subtitle description htmlUrl)) {
+    if ($feed->{$field} && ( ! exists $sub->{$field} ||
+                               $feed->{$field} ne $sub->{$field} )) {
+        $sub->{$field} = $feed->{$field};
+    }
+  }
+  foreach my $item (@{$feed->{'items'}}) {
+    $item->{'origin'} = $sub->{xmlUrl}; # save our source feed...
+    # fix relative links - because Sam Ruby is a wise-ass
+    $item->{'link'} = $self->abs_url($item->{'link'}, $item->{'origin'});
+    if ($item->{'link'} =~ m/feedproxy/) { # cleanup feedproxy links
+      $self->unshorten_url($item->{'link'}, sub {
+        $item->{'link'} = $self->cleanup_feedproxy($_[0]);
+        $self->store_feed_item( $item );
+      } );
+    } else {
+      $self->store_feed_item( $item );
+    }
+  }
+}
 
 sub store_feed_item {
 				my ($self, $item) = @_;
