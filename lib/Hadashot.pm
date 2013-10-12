@@ -64,6 +64,11 @@ sub fetch_subscriptions {
   $self->log->info( "Will check $total feeds" );
   $self->process_feeds($subs, sub {
     my ($self, $sub, $feed, $code, $err) = @_;
+    if (!$feed) {
+     print STDERR "Problem getting feed:",
+      (($code) ? "Error code $code" : ''),
+      (($err) ? "Error $err" : '');
+    }
     $self->backend->update_feed($sub, $feed) if ($feed);
     $self->backend->feeds->update({ _id => $sub->{'_id'} }, $sub);
  });

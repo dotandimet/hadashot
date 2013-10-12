@@ -225,7 +225,7 @@ sub process_feeds {
     $self->ua->get($url => \%not_modified_headers => sub {
       $active--;
       $self->process_feed($sub, @_, $cb);
-      $self->process_feeds($subs);
+      $self->process_feeds($subs, $cb);
       $end->();
     });
   };
