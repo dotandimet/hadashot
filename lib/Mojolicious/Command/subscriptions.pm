@@ -2,7 +2,7 @@ package Mojolicious::Command::subscriptions;
 use Mojo::Base 'Mojolicious::Command';
 
 use Hadashot::Backend;
-use Getopt::Long;
+use Getopt::Long qw(GetOptionsFromArray);
 
 has description => "import OPML subscriptions file\n";
 has usage	=> <<"EOT";
@@ -10,32 +10,34 @@ usage: $0 subscriptions OPMLFILE -flags
 Valid flags are:
 	-dump (default) - print JSON dump of parsed subscriptions
 	-store - save subscriptions in db
+  -fetch - update all subscriptions
 EOT
 
 sub run {
   my ($self, @args) = @_;
-  my $opml_file = shift @args;
-  die $self->usage unless ($opml_file && -r $opml_file);
-  my $store = undef;
-  if (shift @args eq '-store') {
-    print "Will store it!\n";
-    $store = 1;
-  }
-  
-  
-  my $out = Hadashot::Backend->parse_opml($opml_file);
-  if ($store) {  
-     my $coll = $out->db()->collection('subs');
-     for my $sub ($out->subscriptions->each) {
-	my $oid = $coll->insert($sub);
-        if ($oid) {
-           print $sub->{title}, " stored with id $oid\n";
-        }
-     }
+    GetOptionsFromArray \@args,
+    'fetch' => \my $fetch,
+    'store' => \my $store,
+    'dump'  => \my $dump;
+  if ($fetch) {
+    $self->app->fetch_subscriptions(1);
   }
   else {
-	print Mojo::JSON->new->encode( [ $out->subscriptions()->each ] );
-  } 
+  my $opml_file = shift @args;
+  die $self->usage if (! -r $opml_file && ($dump || $store));
+  
+  my @subs = $self->app->backend->parse_opml($opml_file) if (-r $opml_file);
+  if (@subs) {
+     for my $sub (@subs) {
+     if ($store) {
+       $self->app->backend->save_subscription($sub);
+     }
+     if ($dump) {
+       say Mojo::JSON->new->encode($sub);
+     }
+    }
+     }
+     }
 }
 
 
