@@ -122,7 +122,7 @@ sub find_feeds {
       sub {
         my ( $ua, $tx ) = @_;
         if ( $tx->success ) {
-          @feeds = $self->_find_feed_links( $url, $tx->res );
+          @feeds = _find_feed_links( $self, $url, $tx->res );
           $cb->(@feeds);
         }
         else {
@@ -142,6 +142,15 @@ sub find_feeds {
     }
   }
   return @feeds;
+}
+
+sub abs_url {
+  my ($self, $url, $base) = @_;
+  if (!$url || ! Mojo::URL->new($url)->host) {
+    $url =
+      Mojo::URL->new($base)->path($url)->to_abs->to_string;
+  }
+  return $url;
 }
 
 sub _find_feed_links {

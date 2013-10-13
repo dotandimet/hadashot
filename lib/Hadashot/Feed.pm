@@ -70,7 +70,7 @@ sub debug {
     }
 
     eval {
-        my $parse = $self->backend->parse_rss($ass);
+        my $parse = $self->app->parse_rss($ass);
         $self->app->log->debug( $self->dumper($parse) );
         $reparse = $parse->{'items'}[0];
     };

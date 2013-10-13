@@ -54,7 +54,7 @@ sub fetch_subscriptions {
 	else {
 		$subs = $self->backend->feeds->find( { active => 1 })->all;
 	}
-  $self->backend->process_feeds(
+  $self->app->process_feeds(
 		$subs, sub {
 		 $self->render('text' => 'done');
      # $self->redirect_to( 'settings/blogroll' );
@@ -66,14 +66,23 @@ sub add_subscription {
   my ($url) = $self->param('url');
   if ($url) {
     $self->render_later();
-    $self->backend->find_feeds($url, sub {
+    $self->find_feeds($url, sub {
       $self->render(text => "No feeds found for $url :(") && return unless (@_ > 0);
       $self->app->log->info($self->dumper($_)) for (@_);
       my $feed = shift; # TODO add support for multiple feeds later ...
       my $sub = $self->backend->save_subscription($feed);
-      $self->backend->process_feeds( [ $sub ], sub {
-        $self->redirect_to( $self->url_for('/view/feed')->query({src =>
-        $sub->{xmlUrl} }) );
+      $self->app->process_feeds( [ $sub ], sub {
+      my ($self, $sub, $feed, $code, $err) = @_;
+      if (!$feed) {
+      print STDERR "Problem getting feed:",
+        (($code) ? "Error code $code" : ''),
+        (($err) ? "Error $err" : '');
+      }
+      else {
+        $self->backend->update_feed($sub, $feed);
+        $self->backend->feeds->update({ _id => $sub->{'_id'} }, $sub);
+        $self->redirect_to( $self->url_for('/view/feed')->query({src => $sub->{xmlUrl} }) );
+      }
       } );  
     });
   }

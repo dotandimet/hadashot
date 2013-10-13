@@ -105,7 +105,7 @@ sub update_feed {
   foreach my $item (@{$feed->{'items'}}) {
     $item->{'origin'} = $sub->{xmlUrl}; # save our source feed...
     # fix relative links - because Sam Ruby is a wise-ass
-    $item->{'link'} = $self->abs_url($item->{'link'}, $item->{'origin'});
+    $item->{'link'} = abs_url($item->{'link'}, $item->{'origin'});
     if ($item->{'link'} =~ m/feedproxy/) { # cleanup feedproxy links
       $self->unshorten_url($item->{'link'}, sub {
         $item->{'link'} = $self->cleanup_feedproxy($_[0]);
@@ -202,7 +202,7 @@ sub unshorten_url {
   }
 }
 sub abs_url {
-  my ($self, $url, $base) = @_;
+  my ($url, $base) = @_;
   if (!$url || ! Mojo::URL->new($url)->host) {
     $url =
       Mojo::URL->new($base)->path($url)->to_abs->to_string;
