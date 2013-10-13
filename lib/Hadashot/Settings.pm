@@ -56,7 +56,17 @@ sub fetch_subscriptions {
 	}
   $self->app->process_feeds(
 		$subs, sub {
-		 $self->render('text' => 'done');
+      my ($self, $sub, $feed, $code, $err) = @_;
+      if (!$feed) {
+      print STDERR "Problem getting feed:",
+        (($code) ? "Error code $code" : ''),
+        (($err) ? "Error $err" : '');
+      }
+      else {
+        $self->backend->update_feed($sub, $feed);
+        $self->backend->feeds->update({ _id => $sub->{'_id'} }, $sub);
+ 		 $self->render('text' => 'done');
+     }
      # $self->redirect_to( 'settings/blogroll' );
 		});
 }
@@ -81,7 +91,11 @@ sub add_subscription {
       else {
         $self->backend->update_feed($sub, $feed);
         $self->backend->feeds->update({ _id => $sub->{'_id'} }, $sub);
-        $self->redirect_to( $self->url_for('/view/feed')->query({src => $sub->{xmlUrl} }) );
+        $self->app->log->debug('Still here?');
+        my $dest = $self->url_for('/view/feed')->query({src =>
+        $sub->{xmlUrl}});
+        $self->app->log->debug("Yeah! Go Here! " . $dest);
+        $self->redirect_to($dest);
       }
       } );  
     });
