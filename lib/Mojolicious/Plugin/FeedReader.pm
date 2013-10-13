@@ -258,7 +258,7 @@ sub process_feed {
 				$res->content->asset,
         sub {
           my ($s, $f) = @_;
-          $s->$cb($sub, $f);
+          $s->$cb($sub, $f, undef, 200);
         }
 			);
     }
