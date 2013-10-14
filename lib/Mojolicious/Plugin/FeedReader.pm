@@ -75,9 +75,9 @@ sub parse_rss_item {
 				if ($l->text =~ /\w+/) {
         	$h{'link'} = $l->text; # simple link
 				}
-				else { # we have an empty link element with no 'href'. :-(
-					$h{'link'} = $1 if ($l->next->text =~ m/^(http\S+)/);
-				}
+# 				else { # we have an empty link element with no 'href'. :-(
+# 					$h{'link'} = $1 if ($l->next->text =~ m/^(http\S+)/);
+# 				}
        }
     });
 		# find tags:
@@ -88,7 +88,15 @@ sub parse_rss_item {
 		}
     #
 		# normalize fields:
-		my %replace = ( 'content\:encoded' => 'content', 'xhtml\:body' => 'content', 'pubDate' => 'published', 'dc\:date' => 'published', 'summary' => 'description', 'updated' => 'published', 'guid' => 'link' );
+                my %replace = (
+                    'content\:encoded' => 'content',
+                    'xhtml\:body'      => 'content',
+                    'pubDate'          => 'published',
+                    'dc\:date'         => 'published',
+                    'summary'          => 'description',
+                    'updated'          => 'published',
+                #    'guid'             => 'link'
+                );
 		while (my ($old, $new) = each %replace) {
 		if ($h{$old} && ! $h{$new}) {
 			$h{$new} = delete $h{$old};
@@ -115,15 +123,19 @@ sub find_feeds {
   my $url  = shift;
   my $cb   = ( ref $_[-1] eq 'CODE' ) ? pop @_ : undef;
   my @feeds;
+  my $delay;
+  unless ($cb) {
+    $delay = Mojo::IOLoop->delay(sub{ return @_; });
+    $cb = $delay->begin();
+  }
   $self->ua->max_redirects(5)->connect_timeout(30);
-  if ($cb) {  # non-blocking
     $self->ua->get(
       $url,
       sub {
         my ( $ua, $tx ) = @_;
         if ( $tx->success ) {
           @feeds = _find_feed_links( $self, $url, $tx->res );
-          $cb->(\@feeds);
+          $cb->(\@feeds, undef, $tx->res->code);
         }
         else {
           my ( $err, $code ) = $tx->error;
@@ -131,18 +143,7 @@ sub find_feeds {
         }
       }
     );
-    Mojo::IOLoop->start unless Mojo::IOLoop->is_running;
-  }
-  else {
-    my $tx = $self->ua->get($url);
-    if ( $tx->success ) {
-      @feeds = $self->_find_feed_links( $url, $tx->res );
-    }
-    else {
-      my ( $err, $code ) = $tx->error;
-    }
-  }
-  return @feeds;
+  return $delay->wait if ($delay);
 }
 
 sub abs_url {

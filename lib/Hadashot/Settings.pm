@@ -79,7 +79,7 @@ sub add_subscription {
     $self->find_feeds($url, sub {
       $self->render(text => "No feeds found for $url :(") && return unless (@_ > 0);
       $self->app->log->info($self->dumper($_)) for (@_);
-      my $feed = shift; # TODO add support for multiple feeds later ...
+      my $feed = shift @{$_[0]}; # TODO add support for multiple feeds later ...
       my $sub = $self->backend->save_subscription($feed);
       $self->app->process_feeds( [ $sub ], sub {
       my ($self, $sub, $feed, $code, $err) = @_;
@@ -97,7 +97,8 @@ sub add_subscription {
         $self->app->log->debug("Yeah! Go Here! " . $dest);
         $self->redirect_to($dest);
       }
-      } );  
+        $self->render(text => 'hey look, I am here!');
+      } );
     });
   }
   else {
