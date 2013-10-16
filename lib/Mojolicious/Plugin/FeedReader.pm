@@ -126,7 +126,7 @@ sub find_feeds {
   my $delay;
   unless ($cb) {
     $delay = Mojo::IOLoop->delay(sub{ return @_; });
-    $cb = $delay->begin();
+    $cb = $delay->begin(0);
   }
   $self->ua->max_redirects(5)->connect_timeout(30);
     $self->ua->get(
@@ -134,11 +134,13 @@ sub find_feeds {
       sub {
         my ( $ua, $tx ) = @_;
         if ( $tx->success ) {
+          $self->app->log->debug("Got $url");
           @feeds = _find_feed_links( $self, $url, $tx->res );
           $cb->(\@feeds, undef, $tx->res->code);
         }
         else {
           my ( $err, $code ) = $tx->error;
+          $self->app->log->debug("Failed to get $url: $err $code");
           $cb->(undef, $err, $code);
         }
       }
@@ -221,7 +223,7 @@ sub _find_feed_links {
 
 sub process_feeds {
   my ($self, $subs, $cb) = @_;
-  state $delay = Mojo::IOLoop->delay();
+  state $delay = Mojo::IOLoop->delay(sub { return @_; });
   state $active = 0;
   my $max_concurrent = 8;
   while ( $active < $max_concurrent and my $sub = shift @$subs ) {
