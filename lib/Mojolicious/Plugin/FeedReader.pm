@@ -140,7 +140,7 @@ sub find_feeds {
         }
         else {
           my ( $err, $code ) = $tx->error;
-          $self->app->log->debug("Failed to get $url: $err $code");
+          $self->app->log->debug((($code) ? "Failed to get $url: Error $err $code" : "Network error: $err"));
           $cb->(undef, $err, $code);
         }
       }

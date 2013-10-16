@@ -59,18 +59,20 @@ sub fetch_subscriptions {
   }
   $subs = [ shuffle @$subs ];
   $subs = (defined $limit && $limit > 0 && $limit <= $#$subs) ?  @$subs[0..$limit] : $subs;
-  my @all = @$subs;
+  my %all = map { $_->{xmlUrl} => 1 } @$subs;
   my $total = scalar @$subs;
-  $self->log->info( "Will check $total feeds" );
+  $self->backend->log->info( "Will check $total feeds" );
   $self->process_feeds($subs, sub {
     my ($self, $sub, $feed, $code, $err) = @_;
     if (!$feed) {
-     print STDERR "Problem getting feed:",
+     $self->backend->log->warn( "Problem getting feed:",
       (($code) ? "Error code $code" : ''),
-      (($err) ? "Error $err" : '');
+      (($err) ? "Error $err" : '') );
     }
     $self->backend->update_feed($sub, $feed) if ($feed);
     $self->backend->feeds->update({ _id => $sub->{'_id'} }, $sub);
+    delete $all{$sub->{xmlUrl}} || $self->log->warn('no url to remove?');
+    $self->backend->log->info('Operation -- COMPLETE!') if (0 == scalar keys %all);
  });
 }
 
