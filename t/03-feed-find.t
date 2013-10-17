@@ -33,9 +33,34 @@ for my $simple (
     is( $code, 200 );
     ok( not defined($err) );
     is( ref $feeds->[0],      'HASH' );
-    is( $feeds->[0]{xmlUrl},  'http://localhost/atom.xml' );
-    is( $feeds->[0]{htmlUrl}, 'http://localhost/weblog/' );
-    is( $feeds->[0]{title},   'First Weblog' );
+    is( $feeds->[0]{xmlUrl},  'http://localhost/atom.xml' ); # abs url!
+    is( $feeds->[0]{htmlUrl}, 'http://localhost/weblog/' ); # abs url!
+    is( $feeds->[0]{title},   'First Weblog' ); # title is just a hint
 }
+
+# html page with multiple feed links
+
+$t->get_ok('/link2_multi.html')->status_is(200);
+my ( $feeds, $err, $code ) = $t->app->find_feeds('/link2_multi.html');
+is ( $code, 200 );
+ok ( not defined $err );
+is ( scalar @$feeds, 3, 'got 3 possible feed links');
+is( $feeds->[0]{xmlUrl},  'http://www.example.com/?feed=rss2' ); # abs url!
+is( $feeds->[0]{title},   'example RSS 2.0' ); # title is just a hint
+is( $feeds->[1]{xmlUrl},  'http://www.example.com/?feed=rss' ); # abs url!
+is( $feeds->[1]{title},   'example RSS .92' ); # title is just a hint
+is( $feeds->[2]{xmlUrl},  'http://www.example.com/?feed=atom' ); # abs url!
+is( $feeds->[2]{title},   'example Atom 0.3' ); # title is just a hint
+
+# more atom
+$t->get_ok('/intertwingly.atom')->status_is(200);
+( $feeds, $err, $code ) = $t->app->find_feeds('/intertwingly.atom');
+is( $code, 200 );
+ok( not defined($err) );
+is( ref $feeds->[0],      'HASH' );
+is( $feeds->[0]{xmlUrl},  '"http://intertwingly.net/blog/index.atom' );
+is( $feeds->[0]{htmlUrl}, '"http://intertwingly.net/blog/' ); 
+is( $feeds->[0]{title},   'Sam Ruby' ); # title is just a hint
+
 
 done_testing();
