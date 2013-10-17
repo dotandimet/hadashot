@@ -33,7 +33,7 @@ for my $simple (
     is( $code, 200 );
     ok( not defined($err) );
     is( ref $feeds->[0],      'HASH' );
-    is( $feeds->[0]{xmlUrl},  'http:/localhost/atom.xml' );
+    is( $feeds->[0]{xmlUrl},  'http://localhost/atom.xml' );
     is( $feeds->[0]{htmlUrl}, 'http://localhost/weblog/' );
     is( $feeds->[0]{title},   'First Weblog' );
 }
