@@ -58,9 +58,22 @@ $t->get_ok('/intertwingly.atom')->status_is(200);
 is( $code, 200 );
 ok( not defined($err) );
 is( ref $feeds->[0],      'HASH' );
-is( $feeds->[0]{xmlUrl},  '"http://intertwingly.net/blog/index.atom' );
-is( $feeds->[0]{htmlUrl}, '"http://intertwingly.net/blog/' ); 
+is( $feeds->[0]{xmlUrl},  'http://intertwingly.net/blog/index.atom' );
+is( $feeds->[0]{htmlUrl}, 'http://intertwingly.net/blog/' );
 is( $feeds->[0]{title},   'Sam Ruby' ); # title is just a hint
 
+# feed is in link:
+$t->get_ok('/link3_anchor.html')->status_is(200);
+( $feeds, $err, $code ) = $t->app->find_feeds('/link3_anchor.html');
+is( $code, 200 );
+ok( not defined($err) );
+is( ref $feeds->[0],      'HASH' );
+is( $feeds->[0]{xmlUrl},  'http://example.com/foo.rss' );
+is( $feeds->[0]{htmlUrl}, 'http://localhost/link3_anchor.html' );
+is( $feeds->[0]{title},   'here' ); # title is just a hint
+is( ref $feeds->[1],      'HASH' );
+is( $feeds->[1]{xmlUrl},  'http://example.com/foo.xml' );
+is( $feeds->[1]{htmlUrl}, 'http://localhost/link3_anchor.html' );
+is( $feeds->[1]{title},   'example' ); # title is just a hint
 
 done_testing();

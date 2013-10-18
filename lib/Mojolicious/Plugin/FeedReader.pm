@@ -150,6 +150,7 @@ sub find_feeds {
 
 sub abs_url {
   my ($url, $base) = @_;
+  
   if (!$url || ! Mojo::URL->new($url)->host) {
     $url =
       Mojo::URL->new($base)->path($url)->to_abs->to_string;
@@ -176,8 +177,8 @@ sub _find_feed_links {
   my ($content_type) = split( /[; ]+/, $res->headers->content_type );
   if ( $is_feed{$content_type} ) {
     my $info = $self->parse_rss_channel( $res->dom );
-    $info->{'xmlUrl'} = $url;
-    $info->{'htmlUrl'} = abs_url($info->{'htmlUrl'}, $url); # thank you Atom
+    $info->{'xmlUrl'} = Mojo::URL->new($url)->to_abs;
+    $info->{'htmlUrl'} = Mojo::URL->new($info->{'htmlUrl'})->to_abs($url); # thank you Atom
     push @feeds, $info;
   }
   else {
@@ -197,7 +198,7 @@ sub _find_feed_links {
         {
           push @feeds,
             {
-            xmlUrl => abs_url( $attrs->{'href'}, $base ),
+            xmlUrl => Mojo::URL->new( $attrs->{'href'} )->to_abs( $base ),
             title  => join ' ', ( $title, $attrs->{'title'} || '' )
             };
         }
@@ -212,7 +213,7 @@ sub _find_feed_links {
       sub {
         push @feeds,
           {
-          xmlUrl => abs_url( $_->attr('href'), $base ),
+          xmlUrl => Mojo::URL->new( $_->attr('href') )->to_abs( $base ),
           title  => $_->text || $_->attr('title') || $title
           };
       }
