@@ -30,11 +30,12 @@ for my $simple (
 {
     $t->get_ok($simple)->status_is(200);
     my ( $feeds, $err, $code ) = $t->app->find_feeds($simple);
+    my $base = $t->tx->req->url->clone->path('/');
     is( $code, 200 );
     ok( not defined($err) );
     is( ref $feeds->[0],      'HASH' );
-    is( $feeds->[0]{xmlUrl},  'http://localhost/atom.xml' ); # abs url!
-    is( $feeds->[0]{htmlUrl}, 'http://localhost/weblog/' ); # abs url!
+    like( $feeds->[0]{xmlUrl},  qr{http://localhost:\d+/atom.xml$} ); # abs url!
+    like( $feeds->[0]{htmlUrl}, qr{http://localhost/weblog/$} ); # abs url!
     is( $feeds->[0]{title},   'First Weblog' ); # title is just a hint
 }
 

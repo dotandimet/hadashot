@@ -135,7 +135,7 @@ sub find_feeds {
         my ( $ua, $tx ) = @_;
         if ( $tx->success ) {
           $self->app->log->debug("Got $url");
-          @feeds = _find_feed_links( $self, $url, $tx->res );
+          @feeds = _find_feed_links( $self, $tx->req->url, $tx->res );
           $cb->(\@feeds, undef, $tx->res->code);
         }
         else {
