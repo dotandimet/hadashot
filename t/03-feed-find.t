@@ -23,26 +23,30 @@ http://corky.net http://www.intertwingly.net/blog/ http://corky.net/dotan/ http:
 #   say $t->app->dumper($_) for @$feeds;
 # }
 
-for my $simple (
-    '/atom.xml',     # feed
-    '/link1.html'    # link
-  )
-{
-    $t->get_ok($simple)->status_is(200);
-    my ( $feeds, $err, $code ) = $t->app->find_feeds($simple);
-    my $base = $t->tx->req->url->clone->path('/');
+# feed
+    $t->get_ok('/atom.xml')->status_is(200);
+    my ( $feeds, $err, $code ) = $t->app->find_feeds('/atom.xml');
     is( $code, 200 );
     ok( not defined($err) );
     is( ref $feeds->[0],      'HASH' );
     like( $feeds->[0]{xmlUrl},  qr{http://localhost:\d+/atom.xml$} ); # abs url!
     like( $feeds->[0]{htmlUrl}, qr{http://localhost/weblog/$} ); # abs url!
     is( $feeds->[0]{title},   'First Weblog' ); # title is just a hint
-}
+
+# link
+    $t->get_ok('/link1.html')->status_is(200);
+    ( $feeds, $err, $code ) = $t->app->find_feeds('/link1.html');
+    is( $code, 200 );
+    ok( not defined($err) );
+    is( ref $feeds->[0],      'HASH' );
+    like( $feeds->[0]{xmlUrl},  qr{http://localhost:\d+/atom.xml$} ); # abs url!
+    like( $feeds->[0]{htmlUrl}, qr{http://localhost/weblog/$} ); # abs url!
+    is( $feeds->[0]{title},   'First Weblog' ); # title is just a hint
 
 # html page with multiple feed links
 
 $t->get_ok('/link2_multi.html')->status_is(200);
-my ( $feeds, $err, $code ) = $t->app->find_feeds('/link2_multi.html');
+( $feeds, $err, $code ) = $t->app->find_feeds('/link2_multi.html');
 is ( $code, 200 );
 ok ( not defined $err );
 is ( scalar @$feeds, 3, 'got 3 possible feed links');
