@@ -176,10 +176,7 @@ sub _find_feed_links {
   # use split to remove charset attribute from content_type
   my ($content_type) = split( /[; ]+/, $res->headers->content_type );
   if ( $is_feed{$content_type} ) {
-    my $info = $self->parse_rss_channel( $res->dom );
-    $info->{'xmlUrl'} = Mojo::URL->new($url)->to_abs;
-    $info->{'htmlUrl'} = Mojo::URL->new($info->{'htmlUrl'})->to_abs($url); # thank you Atom
-    push @feeds, $info;
+    push @feeds, Mojo::URL->new($url)->to_abs;
   }
   else {
   # we are in a web page. PHEAR.
@@ -197,10 +194,7 @@ sub _find_feed_links {
           && ( $rel{'alternate'} || $rel{'service.feed'} ) )
         {
           push @feeds,
-            {
-            xmlUrl => Mojo::URL->new( $attrs->{'href'} )->to_abs( $base ),
-            title  => join ' ', ( $title, $attrs->{'title'} || '' )
-            };
+            Mojo::URL->new( $attrs->{'href'} )->to_abs( $base );
         }
       }
     );
@@ -212,10 +206,7 @@ sub _find_feed_links {
       )->each(
       sub {
         push @feeds,
-          {
-          xmlUrl => Mojo::URL->new( $_->attr('href') )->to_abs( $base ),
-          title  => $_->text || $_->attr('title') || $title
-          };
+          Mojo::URL->new( $_->attr('href') )->to_abs( $base );
       }
       );
   }
