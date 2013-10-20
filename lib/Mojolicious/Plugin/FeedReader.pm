@@ -134,9 +134,15 @@ sub find_feeds {
       sub {
         my ( $ua, $tx ) = @_;
         if ( $tx->success ) {
+          my ($err, $code) = (undef, $tx->res->code);
           $self->app->log->debug("Got $url");
+          eval {
           @feeds = _find_feed_links( $self, $tx->req->url, $tx->res );
-          $cb->(\@feeds, undef, $tx->res->code);
+          };
+          if ($@) {
+            $err = $@;
+          }
+          $cb->(\@feeds, $err, $code);
         }
         else {
           my ( $err, $code ) = $tx->error;
@@ -180,9 +186,7 @@ sub _find_feed_links {
   }
   else {
   # we are in a web page. PHEAR.
-    my $base =
-      ( $res->dom->find('head base')->pluck( 'attr', 'href' )->join(q{})
-        || $url );
+    my $base = Mojo::URL->new( $res->dom->find('head base')->pluck( 'attr', 'href' )->join(q{}) || $url );
     my $title = $res->dom->at('head > title')->text || $url;
     $res->dom->find('head link')->each(
       sub {
