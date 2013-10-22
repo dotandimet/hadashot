@@ -127,8 +127,10 @@ sub find_feeds {
   unless ($cb) {
     $delay = Mojo::IOLoop->delay(sub{ return @_; });
     $cb = $delay->begin(0);
+    $delay->on('error', sub { $cb->(); die "Delay caught error: ", @_ });
   }
   $self->ua->max_redirects(5)->connect_timeout(30);
+  $self->ua->on('error', sub { $cb->(); die "Something horrible: ", @_ });
     $self->ua->get(
       $url,
       sub {
@@ -136,12 +138,7 @@ sub find_feeds {
         if ( $tx->success ) {
           my ($err, $code) = (undef, $tx->res->code);
           $self->app->log->debug("Got $url");
-          eval {
           @feeds = _find_feed_links( $self, $tx->req->url, $tx->res );
-          };
-          if ($@) {
-            $err = $@;
-          }
           $cb->(\@feeds, $err, $code);
         }
         else {
@@ -149,6 +146,7 @@ sub find_feeds {
           $self->app->log->debug((($code) ? "Failed to get $url: Error $err $code" : "Network error: $err"));
           $cb->(undef, $err, $code);
         }
+        $ua->unsubscribe('error');
       }
     );
   return $delay->wait if ($delay);
@@ -187,6 +185,8 @@ sub _find_feed_links {
   else {
   # we are in a web page. PHEAR.
     my $base = Mojo::URL->new( $res->dom->find('head base')->pluck( 'attr', 'href' )->join(q{}) || $url );
+    # sabotage: this next line will cause an exception when we call to_abs
+    $base = $res->dom->find('head base')->pluck( 'attr', 'href' )->join(q{}) || $url ;
     my $title = $res->dom->at('head > title')->text || $url;
     $res->dom->find('head link')->each(
       sub {
