@@ -51,11 +51,13 @@ is( $feeds->[1],  'http://example.com/foo.xml' );
 # Does it work the same non-blocking?
 my $delay = Mojo::IOLoop->delay(sub{ shift; is(scalar(@_), 3); });
 my $end = $delay->begin(0);
+$delay->on('error' => sub { $end->(); die "Bye!"; });
 $t->app->find_feeds('/link2_multi.html', sub {
   my ($feeds, $err, $code) = @_;
   is ($code, 200 );
   ok (not defined $err);
   is( scalar @$feeds, 3);
+  die "I am sad"; # die horribly
 is( $feeds->[0],  'http://www.example.com/?feed=rss2' ); # abs url!
 is( $feeds->[1],  'http://www.example.com/?feed=rss' ); # abs url!
 is( $feeds->[2],  'http://www.example.com/?feed=atom' ); # abs url!

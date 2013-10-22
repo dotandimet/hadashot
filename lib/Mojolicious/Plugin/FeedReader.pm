@@ -130,7 +130,7 @@ sub find_feeds {
     $delay->on('error', sub { $cb->(); die "Delay caught error: ", @_ });
   }
   $self->ua->max_redirects(5)->connect_timeout(30);
-  $self->ua->on('error', sub { $cb->(); die "Something horrible: ", @_ });
+  $self->ua->on('error', sub { eval { $cb->(); }; die "Something horrible: ", $@, q{ }, @_, qq{\n}; });
     $self->ua->get(
       $url,
       sub {
