@@ -169,12 +169,12 @@ sub set_item_direction {
 sub sanitize_item {
 	my ($self, $item) = @_;
 	for my $field (qw(content description title)) {
-		if ($item->{$field} && $item->{$field} =~ /\<(script|base)/) {
-			$item->{$field} = $self->dom->parse($item->{$field})->find('script,base')->remove()->to_xml;
+		if ($item->{$field} && $item->{$field} =~ /\<(script|base|font)/i) {
+      my $dom = $self->dom->parse($item->{$field});
+      $dom->find('script,base,font')
+        ->each(sub { (lc($_->type) eq 'font') ? $_->strip() : $_->remove(); });
+      $item->{$field} = $dom->to_xml;
 		}
-#    if ($item->{$field} && $item->{$field} =~ /\<font/) {
-#      $item->{$field} = $self->dom->parse($item->{$field})->find('font')->strip();
-#    }
 	}
 }
 
