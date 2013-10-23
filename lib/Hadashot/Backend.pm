@@ -28,10 +28,10 @@ sub setup {
 }
 
 sub reset { # wanna drop all your data? cool.
-	my ($self) = @_;
-	$self->feeds->drop();
-	$self->items->drop();
-	$self->log->info('dropped all subs and items');
+  my ($self) = @_;
+  $self->feeds->drop();
+  $self->items->drop();
+  $self->log->info('dropped all subs and items');
 }
 
 sub parse_opml {
@@ -40,22 +40,22 @@ sub parse_opml {
   my $d = $self->dom->parse($opml_str);
   my (%subscriptions, %categories);
   for my $item ($d->find(q{outline})->each) {
-	my $node = $item->attr;
-	if (!defined $node->{type} || $node->{type} ne 'rss') {
-	  my $cat = $node->{title} || $node->{text};
-	  $categories{$cat} = $item->children->pluck('attr', 'xmlUrl');
-	}
-	else { # file by RSS URL:
-	  $subscriptions{ $node->{xmlUrl} } = $node;
-	}
+  my $node = $item->attr;
+  if (!defined $node->{type} || $node->{type} ne 'rss') {
+    my $cat = $node->{title} || $node->{text};
+    $categories{$cat} = $item->children->pluck('attr', 'xmlUrl');
+  }
+  else { # file by RSS URL:
+    $subscriptions{ $node->{xmlUrl} } = $node;
+  }
   }
   # assign categories
   for my $cat (keys %categories) {
-	$self->log->debug( "category $cat\n" );
-	for my $rss ($categories{$cat}->each) {
-		$subscriptions{$rss}{'categories'} ||= [];
-		push @{$subscriptions{$rss}{'categories'}}, $cat;
-	}
+  $self->log->debug( "category $cat\n" );
+  for my $rss ($categories{$cat}->each) {
+    $subscriptions{$rss}{'categories'} ||= [];
+    push @{$subscriptions{$rss}{'categories'}}, $cat;
+  }
   }
   return (values %subscriptions);
 }
@@ -118,44 +118,44 @@ sub update_feed {
 }
 
 sub store_feed_item {
-				my ($self, $item) = @_;
-				my ($link, $title, $content) = map { $item->{$_} } (qw(link title content));
-				unless ($link)	{
-								my $identifier = substr($title . $content . $item->{'_raw'}, 0, 40);
-								$self->log->info( "No link for item $identifier");
-				}
-				else {
-								$self->log->info( "Saving item with $link - $title" );
-							  # convert dates to Mongodb BSON ?
-								for (qw(published updated)) { 
-									next unless ($item->{$_});
-									$item->{$_} = bson_time $item->{$_} * 1000;
-								};
-								$self->items->update({ link => $link }, $item, { upsert => 1 });
-				}
+        my ($self, $item) = @_;
+        my ($link, $title, $content) = map { $item->{$_} } (qw(link title content));
+        unless ($link)  {
+                my $identifier = substr($title . $content . $item->{'_raw'}, 0, 40);
+                $self->log->info( "No link for item $identifier");
+        }
+        else {
+                $self->log->info( "Saving item with $link - $title" );
+                # convert dates to Mongodb BSON ?
+                for (qw(published updated)) { 
+                  next unless ($item->{$_});
+                  $item->{$_} = bson_time $item->{$_} * 1000;
+                };
+                $self->items->update({ link => $link }, $item, { upsert => 1 });
+        }
 }
 
 sub parse_json_collection {
-	my ($self, $file) = @_;
-	my $str = slurp $file;
-	my $obj = $self->json->decode($str);
-	my $items = delete $obj->{'items'};
-	foreach my $item (@$items) {
-		
-	}
-	my $props = $obj;
+  my ($self, $file) = @_;
+  my $str = slurp $file;
+  my $obj = $self->json->decode($str);
+  my $items = delete $obj->{'items'};
+  foreach my $item (@$items) {
+    
+  }
+  my $props = $obj;
 }
 
 sub cleanup_reader_fields {
-	my ($self, $item) = @_;
-	
+  my ($self, $item) = @_;
+  
 }
 
 
 
 sub set_item_direction {
   my ($self, $item) = @_;
-	for my $field (qw(content description title)) {
+  for my $field (qw(content description title)) {
     if ($item->{$field}) {
       $item->{$field} = { dir => $self->get_direction($item->{$field}), content => $item->{$field} };
     }
@@ -167,15 +167,15 @@ sub set_item_direction {
 # noticed caused problems when displaying the feed HTML. I threw in font
 # because it annoys me.
 sub sanitize_item {
-	my ($self, $item) = @_;
-	for my $field (qw(content description title)) {
-		if ($item->{$field} && $item->{$field} =~ /\<(script|base|font)/i) {
+  my ($self, $item) = @_;
+  for my $field (qw(content description title)) {
+    if ($item->{$field} && $item->{$field} =~ /\<(script|base|font)/i) {
       my $dom = $self->dom->parse($item->{$field});
       $dom->find('script,base,font')
         ->each(sub { (lc($_->type) eq 'font') ? $_->strip() : $_->remove(); });
       $item->{$field} = $dom->to_xml;
-		}
-	}
+    }
+  }
 }
 
 sub unshorten_url {
@@ -214,7 +214,7 @@ sub cleanup_feedproxy {
   for (qw(utm_source utm_medium utm_campaign)) {
     $url->query->remove($_);
   }
-	return $url;
+  return $url;
 }
 
 1;
