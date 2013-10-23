@@ -11,39 +11,47 @@ sub startup {
   $self->plugin('PODRenderer');
   $self->plugin('BootstrapTagHelpers');
   $self->plugin('FeedReader');
-  my $config = $self->plugin('Config', default => {
-      db_type => 'mango',
-      db_connect => 'mongodb://localhost:27017',
-      db_name => 'hadashot',
-      db_feeds => 'subs',
-      db_items => 'items',
+  my $config = $self->plugin(
+    'Config',
+    default => {
+      db_type      => 'mango',
+      db_connect   => 'mongodb://localhost:27017',
+      db_name      => 'hadashot',
+      db_feeds     => 'subs',
+      db_items     => 'items',
       db_bookmarks => 'bookmarks',
       db_raw_feeds => 'raw_feeds',
-      secret => 'zasdcwdw2d'
-  });
+      secret       => 'zasdcwdw2d'
+    }
+  );
   $self->secret($self->config->{'secret'});
+
   # our backend functionality:
 
-  $self->helper( backend => sub {
-    state $bak = Hadashot::Backend->new(
-      conf => $config,
-      ua => $self->ua,
-			log => $self->log
-      ); 
-    } );
+  $self->helper(
+    backend => sub {
+      state $bak = Hadashot::Backend->new(
+        conf => $config,
+        ua   => $self->ua,
+        log  => $self->log
+      );
+    }
+  );
 
-  $self->helper( todate => sub { Hadashot::Backend::time2str($_[1] / 1000); } );
+  $self->helper(todate => sub { Hadashot::Backend::time2str($_[1] / 1000); });
 
   # Router
   my $r = $self->routes;
 
   # Normal route to controller
-  $r->any('/(:controller)/(:action)')->to(controller => 'settings', action => 'blogroll');
+  $r->any('/(:controller)/(:action)')
+    ->to(controller => 'settings', action => 'blogroll');
+
 #  $r->get('/')->to('example#welcome');
 #  $r->any('/import')->to('settings#import');
-#	$r->get('/bookmark/add')->to('bookmark#add');
+# $r->get('/bookmark/add')->to('bookmark#add');
 #  $r->get('/bookmark/list')->to('bookmark#list');
-  
+
 }
 
 sub fetch_subscriptions {
@@ -55,25 +63,34 @@ sub fetch_subscriptions {
     $subs = $self->backend->feeds->find()->all();
   }
   else {
-    $subs = $self->backend->feeds->find({ "active" => 1 })->all();
+    $subs = $self->backend->feeds->find({"active" => 1})->all();
   }
-  $subs = [ shuffle @$subs ];
-  $subs = (defined $limit && $limit > 0 && $limit <= $#$subs) ?  @$subs[0..$limit] : $subs;
+  $subs = [shuffle @$subs];
+  $subs
+    = (defined $limit && $limit > 0 && $limit <= $#$subs)
+    ? @$subs[0 .. $limit]
+    : $subs;
   my %all = map { $_->{xmlUrl} => 1 } @$subs;
   my $total = scalar @$subs;
-  $self->backend->log->info( "Will check $total feeds" );
-  $self->process_feeds($subs, sub {
-    my ($self, $sub, $feed, $code, $err) = @_;
-    if (!$feed) {
-     $self->backend->log->warn( "Problem getting feed:",
-      (($code) ? "Error code $code" : ''),
-      (($err) ? "Error $err" : '') );
+  $self->backend->log->info("Will check $total feeds");
+  $self->process_feeds(
+    $subs,
+    sub {
+      my ($self, $sub, $feed, $code, $err) = @_;
+      if (!$feed) {
+        $self->backend->log->warn(
+          "Problem getting feed:",
+          (($code) ? "Error code $code" : ''),
+          (($err)  ? "Error $err"       : '')
+        );
+      }
+      $self->backend->update_feed($sub, $feed) if ($feed);
+      $self->backend->feeds->update({_id => $sub->{'_id'}}, $sub);
+      delete $all{$sub->{xmlUrl}} || $self->log->warn('no url to remove?');
+      $self->backend->log->info('Operation -- COMPLETE!')
+        if (0 == scalar keys %all);
     }
-    $self->backend->update_feed($sub, $feed) if ($feed);
-    $self->backend->feeds->update({ _id => $sub->{'_id'} }, $sub);
-    delete $all{$sub->{xmlUrl}} || $self->log->warn('no url to remove?');
-    $self->backend->log->info('Operation -- COMPLETE!') if (0 == scalar keys %all);
- });
+  );
 }
 
 1;
