@@ -101,7 +101,7 @@ sub add_subscription {
         $self->app->log->info($self->dumper($_)) for (@_);
         my $feed
           = shift @{$_[0]};    # TODO add support for multiple feeds later ...
-        my $sub = $self->backend->save_subscription($feed);
+        my $sub = $self->backend->save_subscription({ xmlUrl => $feed });
         $self->app->process_feeds(
           [$sub],
           sub {
