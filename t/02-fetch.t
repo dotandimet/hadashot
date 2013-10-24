@@ -5,8 +5,11 @@ use Test::Mojo;
 use Mojo::URL;
 use FindBin;
 
-my $t = Test::Mojo->new('Hadashot');
-push @{$t->app->static->paths}, File::Spec->catdir($FindBin::Bin, 'samples');
+use Mojolicious::Lite;
+plugin 'FeedReader';
+
+push @{app->static->paths}, File::Spec->catdir($FindBin::Bin, 'samples');
+my $t = Test::Mojo->new(app);
 
 my $sub = {
     xmlUrl => '/atom.xml'

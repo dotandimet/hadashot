@@ -8,18 +8,57 @@ use HTTP::Date;
 
 sub register {
   my ($self, $app) = @_;
-  foreach my $method (qw(process_feeds process_feed parse_rss parse_rss_channel parse_rss_item find_feeds)) {
+  foreach my $method (qw(process_feeds process_feed parse_rss parse_rss_file parse_rss_asset parse_rss_channel parse_rss_item find_feeds)) {
     $app->helper($method => \&{$method});
   }
 }
 
 sub parse_rss {
-	my ($self, $rss_file, $cb) = @_;
-  my $rss_str  = decode 'UTF-8', (ref $rss_file) ? $rss_file->slurp : slurp $rss_file;
-  my $d = Mojo::DOM->new->parse($rss_str);
-  my $feed = $self->parse_rss_channel($d); # Feed properties
-	my $items = $d->find('item');
-	my $entries = $d->find('entry'); # Atom
+  my ($self, $xml, $cb) = @_;
+  my $dom;
+  if (!ref $xml) { # assume file
+    my $rss_str  = decode 'UTF-8', slurp $xml;
+    die "Failed to read file $xml (as UTF-8): $!" unless ($rss_str);
+    $dom = Mojo::DOM->new->parse($rss_str);
+  }
+  elsif (ref $xml eq 'SCALAR') { # assume string
+    $dom = Mojo::DOM->new->parse($$xml);
+  }
+  elsif ($xml->can('slurp')) { # assume Mojo::Asset
+    my $rss_str  = decode 'UTF-8', $xml->slurp;
+    die "Failed to read asset $xml (as UTF-8): $!" unless ($rss_str);
+    $dom = Mojo::DOM->new->parse($rss_str);
+  }
+  elsif ($xml->isa('Mojo::DOM')) {
+    $dom = $xml;
+  }
+  elsif ($xml->isa('Mojo::URL')) {
+    # this is the only case where we might go non-blocking:
+    if ($cb) {
+      $self->ua->get($xml, sub {
+          my ($ua, $tx) = @_;
+          my $feed;
+          if ($tx->success) {
+            eval {
+              $feed = $self->parse_rss_dom($tx->res->dom);
+            };
+          }
+          $self->$cb($feed);
+       });
+    }
+    else {
+      $dom = $self->ua->get($xml)->tx->res->dom;
+    }
+  }
+  return $self->parse_rss_dom($dom);
+}
+
+sub parse_rss_dom {
+	my ($self, $dom) = @_;
+  die "Argument $dom is not a Mojo::DOM" unless ($dom->isa('Mojo::DOM'));
+  my $feed = $self->parse_rss_channel($dom); # Feed properties
+	my $items = $dom->find('item');
+	my $entries = $dom->find('entry'); # Atom
   my $res = [];
 	foreach my $item ($items->each, $entries->each) {
 		push @$res, $self->parse_rss_item($item);
@@ -27,9 +66,6 @@ sub parse_rss {
   if (@$res) {
     $feed->{'items'} = $res;
   }
- 	if ($cb) {
-    $self->$cb($feed);
-	}
  return $feed;
 }
 
