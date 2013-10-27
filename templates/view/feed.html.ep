@@ -13,7 +13,7 @@
   <%% if (obj.content) { %>
   <div class="content" dir="<%%= obj.content.dir %>"><%%= obj.content.content %></div>
   <%% } %>
-  <%% if (obj.description) { %>
+  <%% if (!obj.content && obj.description) { %>
   <div class="well" dir="<%%= obj.description.dir %>"><%%= obj.description.content %></div>
   <%% } %>
 </div>
@@ -24,9 +24,13 @@
   position: relative;
   height: 600px; */
 }
+.entry img, .entry iframe, .entry object {
+  max-width: 100%;
+}
+
 
 </style>
-<div class="affix col-md-2" id="sidebar">
+<div class="affix col-md-2 visible-lg" id="sidebar">
 <h2>Your Menu</h2>
 A sidebar, maybe?
 <ul class="pager">
