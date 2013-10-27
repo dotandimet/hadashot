@@ -92,7 +92,7 @@ sub add_subscription {
   my $self = shift;
   my ($url) = $self->param('url');
   if ($url) {
-    $self->render_later();
+#    $self->render_later();
     $self->find_feeds(
       $url,
       sub {
@@ -101,17 +101,19 @@ sub add_subscription {
         $self->app->log->info($self->dumper($_)) for (@_);
         my $feed
           = shift @{$_[0]};    # TODO add support for multiple feeds later ...
-        my $sub = $self->backend->save_subscription({ xmlUrl => $feed });
+        $self->app->log->info("Found feed: $feed");
+        my $sub = { xmlUrl => $feed };
         $self->app->process_feeds(
           [$sub],
           sub {
             my ($self, $sub, $feed, $code, $err) = @_;
             if (!$feed) {
-              print STDERR "Problem getting feed:",
+              $self->app->log->error( "Problem getting feed:",
                 (($code) ? "Error code $code" : ''),
-                (($err)  ? "Error $err"       : '');
+                (($err)  ? "Error $err"       : '') );
             }
             else {
+              $sub = $self->backend->save_subscription($sub);
               $self->backend->update_feed($sub, $feed);
               $self->backend->feeds->update({_id => $sub->{'_id'}}, $sub);
               $self->app->log->debug('Still here?');

@@ -8,7 +8,7 @@ use HTTP::Date;
 
 sub register {
   my ($self, $app) = @_;
-  foreach my $method (qw(process_feeds process_feed parse_rss parse_rss_file parse_rss_asset parse_rss_channel parse_rss_item find_feeds)) {
+  foreach my $method (qw(process_feeds process_feed parse_rss parse_rss_dom parse_rss_channel parse_rss_item find_feeds)) {
     $app->helper($method => \&{$method});
   }
 }
@@ -47,7 +47,7 @@ sub parse_rss {
        });
     }
     else {
-      $dom = $self->ua->get($xml)->tx->res->dom;
+      $dom = $self->ua->get($xml)->res->dom;
     }
   }
   return $self->parse_rss_dom($dom);
@@ -78,10 +78,12 @@ sub parse_rss_channel {
       $info{$k} = $p->text || $p->content_xml || $p->attr('href');
     }
   }
-  ($info{htmlUrl}) = grep { defined $_ } map { delete $info{$_} } ('link:not([rel])','link[rel=alternate]');
-  ($info{description}) = grep { defined $_ } ( @info{qw(description tagline subtitle)} ); 
+  my ($htmlUrl) = grep { defined $_ } map { delete $info{$_} } ('link:not([rel])','link[rel=alternate]');
+  my ($description) = grep { defined $info{$_} } ( qw(description tagline subtitle) );
+  $info{htmlUrl} = $htmlUrl if ($htmlUrl);
+  $info{description} = $description if ($description);
   
-  return \%info;
+  return ( keys %info) ? \%info : undef;
 }
 
 sub parse_rss_item {
@@ -269,9 +271,9 @@ sub process_feeds {
     my $end = $delay->begin(0);
     $self->ua->get($url => \%not_modified_headers => sub {
       $active--;
+      $end->();
       $self->process_feed($sub, @_, $cb);
       $self->process_feeds($subs, $cb);
-      $end->();
     });
   };
   $delay->wait unless Mojo::IOLoop->is_running;
@@ -290,22 +292,25 @@ sub process_feed {
       if ($etag) {
         $sub->{etag} = $etag;
       }
-    	$self->parse_rss( 
-				$res->content->asset,
-        sub {
-          my ($s, $f) = @_;
-          $s->$cb($sub, $f, undef, 200);
+      my $feed = $self->parse_rss( $res->dom );
+      # check feed is valid:
+      # ...
+      # patch stuff in $sub from $feed:
+      if ($feed) {
+        for my $field (qw(title description htmlUrl)) {
+          $sub->{$field} = $feed->{$field} if (!(exists $sub->{$field}) && exists $feed->{$field});
         }
-			);
+      }
+      $self->$cb($sub, $feed, undef, 200);
     }
 		elsif ($tx->res->code == 304) { # not modified
-      $self->$cb($sub, undef, $tx->res->code, $tx->res->message);
+      $self->$cb($sub, undef, $tx->res->message, 304);
 		}
-    else { $self->$cb($sub, undef, $tx->res->code , $tx->res->message); };
+    else { $self->$cb($sub, undef, $tx->res->message, $tx->res->code); };
   }
   else {
     my ($err, $code) = $tx->error;
-    $self->$cb($sub, undef, $code , $err);
+    $self->$cb($sub, undef, $err, $code);
   }
 }
 
