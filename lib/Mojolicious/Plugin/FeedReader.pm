@@ -79,7 +79,7 @@ sub parse_rss_channel {
     }
   }
   my ($htmlUrl) = grep { defined $_ } map { delete $info{$_} } ('link:not([rel])','link[rel=alternate]');
-  my ($description) = grep { defined $info{$_} } ( qw(description tagline subtitle) );
+  my ($description) = grep { defined $_ } map { exists $info{$_} ? $info{$_} : undef } ( qw(description tagline subtitle) );
   $info{htmlUrl} = $htmlUrl if ($htmlUrl);
   $info{description} = $description if ($description);
   

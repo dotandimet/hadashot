@@ -102,7 +102,7 @@ is($entry->{content}, '<p>This is more of the same</p>
 ');
 
 # Let's do some errors - trying to parse html responses, basically
-my $feed = $t->app->parse_rss( $t->app->ua->get('/link1.html')->res->dom );
+$feed = $t->app->parse_rss( $t->app->ua->get('/link1.html')->res->dom );
 ok(! exists $feed->{items}, 'no entries from html page');
 ok(! exists $feed->{title}, 'no title from html page');
 ok(! exists $feed->{description}, 'no description from html page');
