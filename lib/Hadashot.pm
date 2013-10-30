@@ -3,6 +3,8 @@ use Mojo::Base 'Mojolicious';
 use Hadashot::Backend;
 use List::Util qw(shuffle);
 
+our $VERSION = '0.01';
+
 # This method will run once at server start
 sub startup {
   my $self = shift;
