@@ -8,13 +8,16 @@ use HTTP::Date;
 
 sub register {
   my ($self, $app) = @_;
-  foreach my $method (qw(process_feeds process_feed parse_rss parse_rss_dom parse_rss_channel parse_rss_item find_feeds)) {
+  foreach my $method (
+    qw(process_feeds process_feed parse_rss parse_rss_dom parse_rss_channel parse_rss_item find_feeds)
+    )
+  {
     $app->helper($method => \&{$method});
   }
 }
 
 sub parse_rss {
-  my ($self, $xml, $cb) = @_;
+  my ($c, $xml, $cb) = @_;
   my $dom;
   if (!ref $xml) { # assume file
     my $rss_str  = decode 'UTF-8', slurp $xml;
@@ -35,22 +38,22 @@ sub parse_rss {
   elsif ($xml->isa('Mojo::URL')) {
     # this is the only case where we might go non-blocking:
     if ($cb) {
-      $self->ua->get($xml, sub {
+      $c->ua->get($xml, sub {
           my ($ua, $tx) = @_;
           my $feed;
           if ($tx->success) {
             eval {
-              $feed = $self->parse_rss_dom($tx->res->dom);
+              $feed = $c->parse_rss_dom($tx->res->dom);
             };
           }
-          $self->$cb($feed);
+          $c->$cb($feed);
        });
     }
     else {
-      $dom = $self->ua->get($xml)->res->dom;
+      $dom = $c->ua->get($xml)->res->dom;
     }
   }
-  return $self->parse_rss_dom($dom);
+  return $c->parse_rss_dom($dom);
 }
 
 sub parse_rss_dom {
@@ -315,3 +318,37 @@ sub process_feed {
 }
 
 1;
+
+=encoding utf-8
+
+=head1 NAME
+
+Mojolicious::Plugin::FeedReader - helpers for fetching and parsing RSS & Atom feeds
+
+=head1 SYNOPSIS
+
+        # Mojolicious
+         $self->plugin('FeedReader');
+
+         # Mojolicious::Lite
+         plugin 'FeedReader';
+
+=head1 DESCRIPTION
+
+B<Experimental / Toy code !!! use at your own risk!!!>
+
+B<Mojolicious::Plugin::FeedReader> implements helpers for identifying, fetching and parsing RSS and Atom Feeds.
+It has minimal dependencies, relying as much as possible on Mojo:: components (Mojo::UserAgent, Mojo::DOM).
+It therefore is probably pretty fragile.
+
+=head1 HELPERS
+
+B<Mojolicious::Plugin::FeedReader> adds the following helpers.
+
+=head2 find_feeds
+
+=head2 parse_rss
+
+=head2 process_feeds
+
+=cut
