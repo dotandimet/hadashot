@@ -51,14 +51,13 @@ say "Now blackjack:";
 my $ua = Blackjack->new;
 test($ua, \@urls9);
 
-exit;
 
 say "Will fetch all ", scalar @urls;
 
-say "Fetching with Mojo::UserAgent";
-$ua = Mojo::UserAgent->new;
-test($ua, \@urls);
-
+ say "Fetching with Mojo::UserAgent";
+ $ua = Mojo::UserAgent->new;
+ test($ua, \@urls);
+# 
 say "Now blackjack:";
 $ua = Blackjack->new;
 test($ua, \@urls);

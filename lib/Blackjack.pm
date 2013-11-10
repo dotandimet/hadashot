@@ -8,15 +8,18 @@ use Mojo::Base 'Mojo::UserAgent';
 
 has max_active => sub { shift->max_connections }; # is this a good default?
 
+sub new {
+  my $self = shift->SUPER::new;
+  $self->{'active_requests'} = 0;
+  $self->on(start => sub { shift->{'active_requests'}++ });
+  return $self;
+}
 
 sub start {
   my ($self, $tx, $cb) = @_;
-  unless ($self->{'active'}) {
-    $self->{'active'} = 0;
-    $self->on(start => sub { shift->{'active'}++ });
-  }
   $tx->on('finish' => sub { $self->check_queued(@_); });
-  if ( $self->{active} < $self->max_active ) { # we can do more
+  $tx->on('error'  => sub { print STDERR "KUKU! ", $self->{'active_requests'}, "\n" });
+  if ( $self->{active_requests} < $self->max_active ) { # we can do more
       $self->SUPER::start($tx, $cb);
   }
   else {
@@ -27,11 +30,11 @@ sub start {
 
 sub check_queued {
   my ($self, $tx) = @_;
-  $self->{'active'}--;
+  $self->{'active_requests'}-- ; # unless ($self->{'active_requests'} >= 0);
   my $queue = $self->{queued_tx};
   if ($ENV{BLACKJACK_DEBUG}) {
     print STDERR "Called by ", $tx->req->method, ' ', $tx->req->url, "\n";
-    print STDERR $self->{active}, " active transactions in check_queued\n";
+    print STDERR $self->{active_requests}, " active transactions in check_queued\n";
     print STDERR scalar @$queue , " items in queue\n";
   }
   if (@$queue) {
