@@ -195,16 +195,6 @@ sub find_feeds {
   return $delay->wait if ($delay);
 }
 
-sub abs_url {
-  my ($url, $base) = @_;
-  
-  if (!$url || ! Mojo::URL->new($url)->host) {
-    $url =
-      Mojo::URL->new($base)->path($url)->to_abs->to_string;
-  }
-  return $url;
-}
-
 sub _find_feed_links {
   my ( $self, $url, $res ) = @_;
   my %is_feed = map { $_ => 1 } (
