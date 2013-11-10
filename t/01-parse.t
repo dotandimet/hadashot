@@ -12,6 +12,8 @@ push @{app->static->paths}, File::Spec->catdir($FindBin::Bin, 'samples');
 my $t = Test::Mojo->new(app);
 
 
+# test the parse_rss helper.
+
 # tests lifted from XML::Feed
 
 my %Feeds = (
