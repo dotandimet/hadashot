@@ -26,6 +26,7 @@
 }
 .entry img, .entry iframe, .entry object {
   max-width: 100%;
+  height: auto;
 }
 
 
