@@ -20,18 +20,25 @@ has bookmarks =>
   sub { $_[0]->db()->collection($_[0]->conf->{'db_bookmarks'}) };
 has log => sub { Mojo::Log->new() };
 
+sub collection_exists {
+  my ($self, $name) = @_;
+  my $coll_name = $self->conf->{$name};
+  my $match = grep { $_ eq $coll_name } @{ $self->db->collection_names };
+  return unless ($match);
+  return 1;
+}
 sub setup {
   my ($self) = @_;
-  $self->feeds->create();
-  $self->items->create();
+  $self->feeds->create() unless ($self->collection_exists('db_feeds'));
+  $self->items->create() unless ($self->collection_exists('db_items'));
   $self->items->ensure_index({published => -1});
   $self->items->ensure_index({origin    => 1});
 }
 
 sub reset {    # wanna drop all your data? cool.
   my ($self) = @_;
-  $self->feeds->drop();
-  $self->items->drop();
+  $self->feeds->drop() if ($self->collection_exists('db_feeds'));
+  $self->items->drop() if ($self->collection_exists('db_items'));
   $self->log->info('dropped all subs and items');
 }
 
@@ -98,7 +105,7 @@ sub get_direction {
 
 
 sub update_feed {
-  my ($self, $sub, $feed) = @_;
+  my ($self, $sub, $feed, $cb) = @_;
 
 # update sub general properties
   for my $field (qw(title subtitle description htmlUrl)) {
@@ -117,18 +124,18 @@ sub update_feed {
         $item->{'link'},
         sub {
           $item->{'link'} = $self->cleanup_feedproxy($_[0]);
-          $self->store_feed_item($item);
+          $self->store_feed_item($item, $cb);
         }
       );
     }
     else {
-      $self->store_feed_item($item);
+      $self->store_feed_item($item, $cb);
     }
   }
 }
 
 sub store_feed_item {
-  my ($self, $item) = @_;
+  my ($self, $item, $cb) = @_;
   my ($link, $title, $content) = map { $item->{$_} } (qw(link title content));
   unless ($link) {
     my $identifier = substr($title . $content . $item->{'_raw'}, 0, 40);
@@ -142,7 +149,13 @@ sub store_feed_item {
       next unless ($item->{$_});
       $item->{$_} = bson_time $item->{$_} * 1000;
     }
-    $self->items->update({link => $link}, $item, {upsert => 1});
+    $self->items->update({link => $link}, $item, {upsert => 1}, 
+      sub {
+        my ($doc, $err) = @_;
+        die "Error in updating item: $err" if ($err);
+        $cb->();
+      }
+    );
   }
 }
 

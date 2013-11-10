@@ -53,7 +53,7 @@ sub parse_rss {
       $dom = $c->ua->get($xml)->res->dom;
     }
   }
-  return $c->parse_rss_dom($dom);
+  return ($dom) ? $c->parse_rss_dom($dom) : 1;
 }
 
 sub parse_rss_dom {
