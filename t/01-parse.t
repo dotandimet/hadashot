@@ -49,6 +49,20 @@ $feed = $t->app->parse_rss(Mojo::URL->new("/atom.xml"));
 isa_ok($feed, 'HASH');
 is($feed->{title}, 'First Weblog');
 
+my $delay = Mojo::IOLoop->delay(sub {
+  my ($delay, $feed) = @_;
+  isa_ok($feed, 'HASH');
+  say ref $feed;
+  is($feed->{title}, 'First Weblog');
+});
+
+# parse a URL - non-blocking - this revealed a bug, yay!
+$t->app->parse_rss(Mojo::URL->new("/atom.xml"),
+  sub {
+    my ($c, $feed) = @_;
+    $delay->begin(0)->($feed);
+  });
+$delay->wait unless (Mojo::IOLoop->is_running);
 ## Then try calling all of the unified API methods.
 for my $file (sort keys %Feeds) {
     my $path = File::Spec->catdir($FindBin::Bin, 'samples', $file);

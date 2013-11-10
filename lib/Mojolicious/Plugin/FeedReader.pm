@@ -53,7 +53,7 @@ sub parse_rss {
       $dom = $c->ua->get($xml)->res->dom;
     }
   }
-  return $c->parse_rss_dom($dom);
+  return ($dom) ? $c->parse_rss_dom($dom) : 1;
 }
 
 sub parse_rss_dom {
@@ -193,16 +193,6 @@ sub find_feeds {
       }
     );
   return $delay->wait if ($delay);
-}
-
-sub abs_url {
-  my ($url, $base) = @_;
-  
-  if (!$url || ! Mojo::URL->new($url)->host) {
-    $url =
-      Mojo::URL->new($base)->path($url)->to_abs->to_string;
-  }
-  return $url;
 }
 
 sub _find_feed_links {
