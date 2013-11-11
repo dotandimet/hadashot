@@ -20,6 +20,7 @@ has bookmarks =>
   sub { $_[0]->db()->collection($_[0]->conf->{'db_bookmarks'}) };
 has log => sub { Mojo::Log->new() };
 
+# setup methods
 sub collection_exists {
   my ($self, $name) = @_;
   my $coll_name = $self->conf->{$name};
@@ -115,7 +116,10 @@ sub update_feed {
       $sub->{$field} = $feed->{$field};
     }
   }
+  my $delay = Mojo::IOLoop->delay(sub { $cb->(@_); });
+  $delay->on('error' => sub { die "Error in update_feed:", @_; });
   foreach my $item (@{$feed->{'items'}}) {
+    my $end = $delay->begin(0);
     $item->{'origin'} = $sub->{xmlUrl};    # save our source feed...
          # fix relative links - because Sam Ruby is a wise-ass
     $item->{'link'} = abs_url($item->{'link'}, $item->{'origin'});
@@ -123,15 +127,18 @@ sub update_feed {
       $self->unshorten_url(
         $item->{'link'},
         sub {
+          $end->();
           $item->{'link'} = $self->cleanup_feedproxy($_[0]);
-          $self->store_feed_item($item, $cb);
+          $self->store_feed_item($item, $end);
         }
       );
     }
     else {
-      $self->store_feed_item($item, $cb);
+      $self->store_feed_item($item, $end);
     }
   }
+  $delay->wait unless (Mojo::IOLoop->is_running);
+
 }
 
 sub store_feed_item {
@@ -140,6 +147,7 @@ sub store_feed_item {
   unless ($link) {
     my $identifier = substr($title . $content . $item->{'_raw'}, 0, 40);
     $self->log->info("No link for item $identifier");
+    return $cb->();
   }
   else {
     $self->log->info("Saving item with $link - $title");

@@ -29,6 +29,7 @@ $t->get_ok('/settings/blogroll?js=1')->status_is(200)
 
 # doesn't work yet. Horrors.
 my $delay = Mojo::IOLoop->delay;
+$delay->on(error => sub { die "Horrors: ", @_, "\n"; });
 $t->app->parse_rss(
   Mojo::URL->new('/atom.xml'),
   sub {
@@ -37,12 +38,8 @@ $t->app->parse_rss(
   }
 );
 $delay->wait unless (Mojo::IOLoop->is_running);
-say $t->app->ua->get('/feed/river?js=1')->res->body;
 
-# say $t->app->ua->get('/settings/blogroll?js=1')->res->body;
-$t->get_ok('/')->status_is(200)->content_like(qr/Look/i);
-#say $t->app->dumper($t->app->config);
-
+$t->get_ok('/feed/river?js=1')->json_is('/total', 2)->json_is('/items/0/tags', ["Travel"]);
 
 
 
