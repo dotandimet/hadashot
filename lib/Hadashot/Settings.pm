@@ -141,7 +141,7 @@ sub load_and_go {
     $subs,
     sub {
       $self->redirect_to(
-        $self->url_for('/view/feed')->query({src => $subs->[0]->{xmlUrl}}));
+        $self->url_for('/view/feed')->query({src => $self->param('src')}));
     }
   );
 }
