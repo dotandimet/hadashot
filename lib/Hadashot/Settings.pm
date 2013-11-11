@@ -137,7 +137,7 @@ sub load_and_go {
   my $self = shift;
   $self->render_later();
   my $subs = $self->backend->feeds->find({xmlUrl => $self->param('src')})->all;
-  $self->backend->process_feeds(
+  $self->process_feeds(
     $subs,
     sub {
       $self->redirect_to(
