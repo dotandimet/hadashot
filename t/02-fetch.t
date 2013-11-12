@@ -18,50 +18,48 @@ my $sub = {xmlUrl => '/atom.xml'};
 $t->app->helper(
   blocker => sub {
     my ($self, $sub) = @_;
-    my ($s, $f, $e, $c);
+    my ($c, $f, $r);
     my $delay = Mojo::IOLoop->delay(
       sub {
-        shift;    # Mojo::IOLoop::Delay
         shift;    # Mojolicious::Controller
-        ($s, $f, $e, $c) = @_;
+        ($c, $f, $r) = @_;
       }
     );
     my $end = $delay->begin(0);
     $t->app->process_feeds([$sub], sub { $end->(@_); });
-    return ($s, $f, $e, $c);
+    say $t->app($_) for ($f, $r);
+    return ($c, $f, $r);
   }
 );
 
 $t->get_ok($sub->{xmlUrl})->status_is(200);
-my ($s, $f, $e, $c) = $t->app->blocker($sub);
-is(ref $s,        'HASH');
+my ($c, $f, $r) = $t->app->blocker($sub);
+isa_ok($c,        'Mojolicious::Controller');
 is(ref $f,        'HASH');
-is($e,            undef);
-is($c,            200);
-is($f->{'title'}, 'First Weblog');
-is($s->{'title'}, 'First Weblog', 'title taken from feed');
+say $t->app->dumper($f);
+is($r->{error},            undef);
+is($r->{code},            200);
 is(scalar @{$f->{items}}, 2);
 is($f->{items}[0]{title}, 'Entry Two');
 
 # now try to fetch it again, and see what what:
-($s, $f, $e, $c) = $t->app->blocker($s);
-is(ref $s, 'HASH');
+($c, $f, $r) = $t->app->blocker($sub);
 is($f,     undef);
-is($e,     'Not Modified');
-is($c,     304);
+is($r->{error},     'Not Modified');
+is($r->{code},     304);
 
 # now let's do error tests:
-($s, $f, $e, $c) = $t->app->blocker({xmlUrl => '/floo'});
-is(ref $s, 'HASH');
+($c, $f, $r) = $t->app->blocker({xmlUrl => '/floo'});
+isa_ok($c,        'Mojolicious::Controller');
 is($f,     undef);
-is($e,     'Not Found');
-is($c,     404);
+is($r->{error},     'Not Found');
+is($r->{code},     404);
 
-($s, $f, $e, $c) = $t->app->blocker({xmlUrl => '/link1.html'});
-is(ref $s, 'HASH');
+($c, $f, $r) = $t->app->blocker({xmlUrl => '/link1.html'});
+isa_ok($c,        'Mojolicious::Controller');
 is($f,     undef);
-is($e,     undef);
-is($c,     200);
+is($r->{error},     undef);
+is($r->{code},     200);
 
 
 # check the processing of a set of feeds
@@ -75,7 +73,7 @@ my @set = (
 
 my %set_tests = (
   '/atom.xml' => sub {
-    is($_[0]{title}, 'First Weblog');    # $sub is altered
+    is($_[1]{title}, 'First Weblog');    # title in feed
   },
   '/link1.html' =>                       # feed will be undef
     sub {
@@ -84,27 +82,25 @@ my %set_tests = (
   '/nothome' =>                          # 404
     sub {
     is($_[1], undef);
-    is($_[2], 'Not Found');
-    is($_[3], 404);
+    is($_[2]{error}, 'Not Found');
+    is($_[2]{code}, 404);
     },
   '/goto' =>                             # redirect
     sub {
     is(scalar @{$_[1]{items}}, 2);
-    is($_[3],                  200);     # no sign of the re-direct...
+    is($_[2]{code},                  200);     # no sign of the re-direct...
     },
   '/rss10.xml' => sub {
     is(scalar @{$_[1]{items}}, 2);
     is($_[1]{title},           'First Weblog');
-    is($_[0]{title},           'First Weblog');
-    is($_[2],                  undef);
-    is($_[3],                  200);              # no sign of the re-direct...
+    is($_[2]{error},                  undef);
+    is($_[2]{code},                  200);              # no sign of the re-direct...
   },
   '/rss20.xml' => sub {
     is(scalar @{$_[1]{items}}, 2);
     is($_[1]{title},           'First Weblog');
-    is($_[0]{title},           'First Weblog');
-    is($_[2],                  undef);
-    is($_[3],                  200);              # no sign of the re-direct...
+    is($_[2]{error},                  undef);
+    is($_[2]{code},                  200);              # no sign of the re-direct...
   }
 );
 

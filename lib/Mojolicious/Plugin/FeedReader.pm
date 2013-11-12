@@ -153,6 +153,30 @@ sub parse_rss_item {
 		return \%h;
 }
 
+sub req_info {
+	my ($tx) = @_;
+	my %info = ();
+    if (my $res = $tx->success) {
+      $info{'code'} = $res->code;
+      if ($res->code == 200) {
+        my $headers = $res->headers;
+        my ($last_modified, $etag) = ($headers->last_modified, $headers->etag);
+        if ($last_modified) {
+          $info{last_modified} = $last_modified;
+        }
+        if ($etag) {
+          $info{etag} = $etag;
+        }
+      }
+	}
+  else {
+    my ($err, $code) = $tx->error;
+    $info{'code'} = $code if ($code);
+    $info{'error'} = $err;
+  }
+  return \%info;
+}
+
 # find_feeds - get RSS/Atom feed URL from argument. 
 # Code adapted to use Mojolcious from Feed::Find by Benjamin Trott
 # Any stupid mistakes are my own
@@ -263,9 +287,10 @@ sub process_feeds {
     $active++;
     my $end = $delay->begin(0);
     $self->ua->get($url => \%not_modified_headers => sub {
+      my ($ua, $tx) = @_;
       $active--;
       $end->();
-      $self->process_feed($sub, @_, $cb);
+      $self->process_feed($tx, $cb);
       $self->process_feeds($subs, $cb);
     });
   };
@@ -273,38 +298,34 @@ sub process_feeds {
 }
 
 sub process_feed {
-  my ($self, $sub, $ua, $tx, $cb) = @_;
-  my $url = $sub->{xmlUrl};
-  if (my $res = $tx->success) {
-    if ($tx->res->code == 200) {
-      my $headers = $tx->res->headers;
-      my ($last_modified, $etag) = ($headers->last_modified, $headers->etag);
-      if ($last_modified) {
-        $sub->{last_modified} = $last_modified;
-      }
-      if ($etag) {
-        $sub->{etag} = $etag;
-      }
-      my $feed = $self->parse_rss( $res->dom );
-      # check feed is valid:
-      # ...
-      # patch stuff in $sub from $feed:
-      if ($feed) {
-        for my $field (qw(title description htmlUrl)) {
-          $sub->{$field} = $feed->{$field} if (!(exists $sub->{$field}) && exists $feed->{$field});
-        }
-      }
-      $self->$cb($sub, $feed, undef, 200);
+  my ($self, $tx, $cb) = @_;
+  my $req_info = req_info($tx);
+  my $feed;
+  if ($req_info->{'code'} == 200) {
+    eval {
+      my $feed = $self->parse_rss( $tx->res->dom );
+    };
+    if ($@) { # assume no error from tx, because code is 200
+      $req_info->{'error'} = $@;
     }
-		elsif ($tx->res->code == 304) { # not modified
-      $self->$cb($sub, undef, $tx->res->message, 304);
-		}
-    else { $self->$cb($sub, undef, $tx->res->message, $tx->res->code); };
   }
-  else {
-    my ($err, $code) = $tx->error;
-    $self->$cb($sub, undef, $err, $code);
+  if ($cb) {
+    $self->$cb($feed, $req_info);
+    return;
   }
+  else { # blocking???
+    return $feed, $req_info;
+  }
+}
+
+# this should be moved out of FeedReader...
+# patch stuff in $sub from $feed:
+sub add_subscription_info_from_channel {
+  my ($self, $feed, $sub) = @_;
+  for my $field (qw(title description htmlUrl)) {
+    $sub->{$field} = $feed->{$field} if (!(exists $sub->{$field}) && exists $feed->{$field});
+  }
+  return $sub;
 }
 
 1;
