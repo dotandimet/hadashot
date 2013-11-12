@@ -44,7 +44,7 @@ $feed = $t->app->parse_rss(\$str);
 isa_ok($feed, 'HASH');
 is($feed->{title}, 'First Weblog');
 
-# parse a URL - only works blocking so far :(
+# parse a URL 
 $feed = $t->app->parse_rss(Mojo::URL->new("/atom.xml"));
 isa_ok($feed, 'HASH');
 is($feed->{title}, 'First Weblog');

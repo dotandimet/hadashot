@@ -96,19 +96,18 @@ sub add_subscription {
     $self->find_feeds(
       $url,
       sub {
+        print STDERR ($self->app->dumper($_)) for (@_);
         $self->render(text => "No feeds found for $url :(") && return
           unless (@_ > 0);
-        $self->app->log->info($self->dumper($_)) for (@_);
-        my $feed
+        my $xmlUrl
           = shift @{$_[0]};    # TODO add support for multiple feeds later ...
-        $self->app->log->info("Found feed: $feed");
-        my $sub = { xmlUrl => $feed };
+        print STDERR ("Found feed: $xmlUrl");
         $self->app->process_feeds(
-          [$sub],
+          [{ xmlUrl => $xmlUrl }],
           sub {
             my ($self, $sub, $feed, $code, $err) = @_;
             if (!$feed) {
-              $self->app->log->error( "Problem getting feed:",
+              print STDERR ( "Problem getting feed:",
                 (($code) ? "Error code $code" : ''),
                 (($err)  ? "Error $err"       : '') );
             }
@@ -118,7 +117,7 @@ sub add_subscription {
               $self->backend->feeds->update({_id => $sub->{'_id'}}, $sub);
               $self->app->log->debug('Still here?');
               my $dest
-                = $self->url_for('/view/feed')->query({src => $sub->{xmlUrl}});
+                = $self->url_for('/view/feed')->query({src => $xmlUrl});
               $self->app->log->debug("Yeah! Go Here! " . $dest);
               $self->redirect_to($dest);
             }

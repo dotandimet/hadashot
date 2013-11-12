@@ -2,6 +2,7 @@
 use 5.016;
 use Blackjack;
 use Mojo::Util qw(encode);
+use Test::More skip_all => "This is not a test";
 
 sub test {
   my ($ua, $urls) = @_;

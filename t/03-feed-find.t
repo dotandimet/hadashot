@@ -71,6 +71,12 @@ diag($err) if ($err);
 ok( not defined($err) );
 like( $feeds->[0],  qr{http://localhost:\d+/atom.xml$} ); # abs url!
 
+# what do we do on a page with no feeds?
+
+($feeds, $err, $code) = $t->app->find_feeds('/no_link.html');
+is($feeds, undef, 'no feeds');
+is(ref $feeds, 'ARRAY') && is(scalar @$feeds, 0, "empty feeds");
+ok(defined $err, "Error is defined");
 
 
 done_testing();

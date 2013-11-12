@@ -27,7 +27,7 @@ $t->get_ok('/settings/blogroll?js=1')->status_is(200)
   ->content_type_is('application/json')->json_is('/subs/0/xmlUrl' => '/atom.xml')
   ->json_is('/subs/0/title' => 'first');
 
-# doesn't work yet. Horrors.
+# parse and load a feed:
 my $delay = Mojo::IOLoop->delay;
 $delay->on(error => sub { die "Horrors: ", @_, "\n"; });
 $t->app->parse_rss(
@@ -39,7 +39,8 @@ $t->app->parse_rss(
 );
 $delay->wait unless (Mojo::IOLoop->is_running);
 
-$t->get_ok('/feed/river?js=1')->json_is('/total', 2)->json_is('/items/0/tags', ["Travel"]);
+# fetch it:
+say $t->get_ok('/feed/river?js=1')->json_is('/total', 2)->json_is('/items/0/tags', ["Travel"])->tx->res->body;
 
 
 
