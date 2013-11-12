@@ -21,13 +21,12 @@ $t->app->helper(
     my ($c, $f, $r);
     my $delay = Mojo::IOLoop->delay(
       sub {
-        shift;    # Mojolicious::Controller
+        shift;    # Mojo::IOLoop::Delay
         ($c, $f, $r) = @_;
       }
     );
     my $end = $delay->begin(0);
     $t->app->process_feeds([$sub], sub { $end->(@_); });
-    say $t->app($_) for ($f, $r);
     return ($c, $f, $r);
   }
 );
@@ -36,14 +35,13 @@ $t->get_ok($sub->{xmlUrl})->status_is(200);
 my ($c, $f, $r) = $t->app->blocker($sub);
 isa_ok($c,        'Mojolicious::Controller');
 is(ref $f,        'HASH');
-say $t->app->dumper($f);
 is($r->{error},            undef);
 is($r->{code},            200);
 is(scalar @{$f->{items}}, 2);
 is($f->{items}[0]{title}, 'Entry Two');
 
-# now try to fetch it again, and see what what:
-($c, $f, $r) = $t->app->blocker($sub);
+# see how not-modified will work:
+($c, $f, $r) = $t->app->blocker({ xmlUrl => $sub->{xmlUrl}, %$r});
 is($f,     undef);
 is($r->{error},     'Not Modified');
 is($r->{code},     304);
@@ -73,34 +71,34 @@ my @set = (
 
 my %set_tests = (
   '/atom.xml' => sub {
-    is($_[1]{title}, 'First Weblog');    # title in feed
+    is($_[0]{title}, 'First Weblog');    # title in feed
   },
   '/link1.html' =>                       # feed will be undef
     sub {
-    is($_[1], undef);
+    is($_[0], undef);
     },
   '/nothome' =>                          # 404
     sub {
-    is($_[1], undef);
-    is($_[2]{error}, 'Not Found');
-    is($_[2]{code}, 404);
+    is($_[0], undef);
+    is($_[1]{error}, 'Not Found');
+    is($_[1]{code}, 404);
     },
   '/goto' =>                             # redirect
     sub {
-    is(scalar @{$_[1]{items}}, 2);
-    is($_[2]{code},                  200);     # no sign of the re-direct...
+    is(scalar @{$_[0]{items}}, 2);
+    is($_[1]{code},                  200);     # no sign of the re-direct...
     },
   '/rss10.xml' => sub {
-    is(scalar @{$_[1]{items}}, 2);
-    is($_[1]{title},           'First Weblog');
-    is($_[2]{error},                  undef);
-    is($_[2]{code},                  200);              # no sign of the re-direct...
+    is(scalar @{$_[0]{items}}, 2);
+    is($_[0]{title},           'First Weblog');
+    is($_[1]{error},                  undef);
+    is($_[1]{code},                  200);              # no sign of the re-direct...
   },
   '/rss20.xml' => sub {
-    is(scalar @{$_[1]{items}}, 2);
-    is($_[1]{title},           'First Weblog');
-    is($_[2]{error},                  undef);
-    is($_[2]{code},                  200);              # no sign of the re-direct...
+    is(scalar @{$_[0]{items}}, 2);
+    is($_[0]{title},           'First Weblog');
+    is($_[1]{error},                  undef);
+    is($_[1]{code},                  200);              # no sign of the re-direct...
   }
 );
 
@@ -113,11 +111,11 @@ $t->app->process_feeds(
   \@subs,
   sub {
     isa_ok(shift, 'Mojolicious::Controller');
-    my ($sub, $feed, $err, $code) = @_;
-    my $req_url = $sub->{xmlUrl};
+    my ($feed, $req_info) = @_;
+    my $req_url = $req_info->{url}->path;
     eval {
     if ($set_tests{$req_url}) {
-      $set_tests{$req_url}->($sub, $feed, $err, $code);
+      $set_tests{$req_url}->($feed, $req_info);
     }
     }; 
     if ($@) {

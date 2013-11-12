@@ -155,7 +155,7 @@ sub parse_rss_item {
 
 sub req_info {
 	my ($tx) = @_;
-	my %info = ();
+	my %info = ( url => $tx->req->url );
     if (my $res = $tx->success) {
       $info{'code'} = $res->code;
       if ($res->code == 200) {
@@ -167,6 +167,9 @@ sub req_info {
         if ($etag) {
           $info{etag} = $etag;
         }
+      }
+      else {
+        $info{'error'} = $tx->res->message; # for not modified etc.
       }
 	}
   else {
@@ -180,9 +183,6 @@ sub req_info {
 # find_feeds - get RSS/Atom feed URL from argument. 
 # Code adapted to use Mojolcious from Feed::Find by Benjamin Trott
 # Any stupid mistakes are my own
-# I return hashrefs instead of string urls, use 
-# find_feeds($url, sub { say $_->{xmlUrl} })
-# to get just the url
 sub find_feeds {
   my $self = shift;
   my $url  = shift;
@@ -190,33 +190,31 @@ sub find_feeds {
   my @feeds;
   my $delay;
   unless ($cb) {
-    $delay = Mojo::IOLoop->delay(sub{ return @_; });
+    $delay = Mojo::IOLoop->delay();
     $cb = $delay->begin(0);
   }
   $self->ua->max_redirects(5)->connect_timeout(30);
-    $self->ua->get(
-      $url,
-      sub {
-        my ( $ua, $tx ) = @_;
-        if ( $tx->success ) {
-          my ($err, $code) = (undef, $tx->res->code);
-          $self->app->log->debug("Got $url");
-          eval {
+  $self->ua->get(
+    $url,
+    sub {
+      my ( $ua, $tx ) = @_;
+      my $req_info = req_info($tx);
+      if ( $req_info->{code} == 200 ) {
+        eval {
           @feeds = _find_feed_links( $self, $tx->req->url, $tx->res );
-          };
-          if ($@) {
-            $err = $@;
-          }
-          $cb->(\@feeds, $err, $code);
+        };
+        if ($@) {
+          $req_info->{'error'} = $@;
         }
-        else {
-          my ( $err, $code ) = $tx->error;
-          $self->app->log->debug((($code) ? "Failed to get $url: Error $err $code" : "Network error: $err"));
-          $cb->(undef, $err, $code);
+        if (@feeds == 0) {
+          $req_info->{'error'} = 'no feeds found';
         }
       }
-    );
-  return $delay->wait if ($delay);
+      $self->$cb($req_info, @feeds);
+    }
+  );
+  $delay->wait if ($delay && ! Mojo::IOLoop->is_running);
+  return @feeds if ($delay);
 }
 
 sub _find_feed_links {
@@ -303,7 +301,7 @@ sub process_feed {
   my $feed;
   if ($req_info->{'code'} == 200) {
     eval {
-      my $feed = $self->parse_rss( $tx->res->dom );
+      $feed = $self->parse_rss( $tx->res->dom );
     };
     if ($@) { # assume no error from tx, because code is 200
       $req_info->{'error'} = $@;
