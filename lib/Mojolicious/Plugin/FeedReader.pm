@@ -180,6 +180,14 @@ sub req_info {
   return \%info;
 }
 
+# set request conditional headers from saved last_modified and etag headers
+sub set_req_headers { 
+  my $h = shift;
+  my %headers;    
+	$headers{'If-Modified-Since'} = $h->{last_modified} if ($h->{last_modified});
+	$headers{'If-None-Match'} = $h->{etag} if ($h->{etag});
+  return %headers;
+}
 # find_feeds - get RSS/Atom feed URL from argument. 
 # Code adapted to use Mojolcious from Feed::Find by Benjamin Trott
 # Any stupid mistakes are my own
@@ -274,21 +282,23 @@ sub process_feeds {
   my ($self, $subs, $cb) = @_;
   state $delay = Mojo::IOLoop->delay(sub { return @_; });
   state $active = 0;
-  my $max_concurrent = 8;
+  my $max_concurrent = $self->ua->max_connections;
   while ( $active < $max_concurrent and my $sub = shift @$subs ) {
-    my $url = $sub->{xmlUrl};
-		my %not_modified_headers;
-		my $last_modified = $sub->{last_modified};
-		my $etag = $sub->{etag};
-		$not_modified_headers{'If-Modified-Since'} = $last_modified if ($last_modified);
-		$not_modified_headers{'If-None-Match'} = $etag if ($etag);
+    my ($url, %not_modified_headers);
+    if (ref $sub eq 'HASH') { 
+      $url = $sub->{xmlUrl};
+		  %not_modified_headers = set_req_headers($sub);
+    }
+    else {
+      $url = $sub;
+    }
     $active++;
     my $end = $delay->begin(0);
     $self->ua->get($url => \%not_modified_headers => sub {
       my ($ua, $tx) = @_;
       $active--;
       $end->();
-      $self->process_feed($tx, $cb);
+      $self->process_feed($sub, $tx, $cb);
       $self->process_feeds($subs, $cb);
     });
   };
@@ -296,7 +306,7 @@ sub process_feeds {
 }
 
 sub process_feed {
-  my ($self, $tx, $cb) = @_;
+  my ($self, $sub, $tx, $cb) = @_;
   my $req_info = req_info($tx);
   my $feed;
   if ($req_info->{'code'} == 200) {
@@ -308,22 +318,12 @@ sub process_feed {
     }
   }
   if ($cb) {
-    $self->$cb($feed, $req_info);
+    $self->$cb($sub, $feed, $req_info);
     return;
   }
   else { # blocking???
-    return $feed, $req_info;
+    return $sub, $feed, $req_info;
   }
-}
-
-# this should be moved out of FeedReader...
-# patch stuff in $sub from $feed:
-sub add_subscription_info_from_channel {
-  my ($self, $feed, $sub) = @_;
-  for my $field (qw(title description htmlUrl)) {
-    $sub->{$field} = $feed->{$field} if (!(exists $sub->{$field}) && exists $feed->{$field});
-  }
-  return $sub;
 }
 
 1;

@@ -57,9 +57,7 @@ sub startup {
 }
 
 sub fetch_subscriptions {
-  my ($self, $check_all, $limit) = @_;
-  my $ua = $self->ua;
-  $ua->max_redirects(5)->connect_timeout(30);
+  my ($self, $check_all) = @_;
   my $subs;
   if ($check_all) {
     $subs = $self->backend->feeds->find()->all();
@@ -67,28 +65,27 @@ sub fetch_subscriptions {
   else {
     $subs = $self->backend->feeds->find({"active" => 1})->all();
   }
-  $subs = [shuffle @$subs];
-  $subs
-    = (defined $limit && $limit > 0 && $limit <= $#$subs)
-    ? @$subs[0 .. $limit]
-    : $subs;
-  my %all = map { $_->{xmlUrl} => 1 } @$subs;
+  my %all = map { $_->{xmlUrl} => $_ } @$subs;
   my $total = scalar @$subs;
   $self->backend->log->info("Will check $total feeds");
   $self->process_feeds(
     $subs,
     sub {
-      my ($self, $sub, $feed, $code, $err) = @_;
+      my ($c, $sub, $feed, $info) = @_;
+      delete $all{$sub->{xmlurl}};
       if (!$feed) {
-        $self->backend->log->warn(
-          "Problem getting feed:",
-          (($code) ? "Error code $code" : ''),
-          (($err)  ? "Error $err"       : '')
+        $self->backend->log->warn("Problem getting feed:", $info->{'error'});
+        $sub->{active} = 0;
+      }
+      else {
+        $sub->{active} = 1;
+        $self->backend->update_feed(
+          $sub, $feed,
+          sub {
+            $self->backend->feeds->update({_id => $sub->{'_id'}}, $sub);
+          }
         );
       }
-      $self->backend->update_feed($sub, $feed) if ($feed);
-      $self->backend->feeds->update({_id => $sub->{'_id'}}, $sub);
-      delete $all{$sub->{xmlUrl}} || $self->log->warn('no url to remove?');
       $self->backend->log->info('Operation -- COMPLETE!')
         if (0 == scalar keys %all);
     }
