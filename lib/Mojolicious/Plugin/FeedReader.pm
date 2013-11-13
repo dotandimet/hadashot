@@ -309,12 +309,15 @@ sub process_feed {
   my ($self, $sub, $tx, $cb) = @_;
   my $req_info = req_info($tx);
   my $feed;
-  if ($req_info->{'code'} == 200) {
+  if (!defined $req_info->{error} && $req_info->{'code'} == 200) {
     eval {
       $feed = $self->parse_rss( $tx->res->dom );
     };
     if ($@) { # assume no error from tx, because code is 200
       $req_info->{'error'} = $@;
+    }
+    if (!$feed && ! defined $req_info->{'error'}) {
+      $req_info->{'error'} = 'url no longer points to a feed';
     }
   }
   if ($cb) {

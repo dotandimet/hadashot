@@ -72,8 +72,11 @@ sub fetch_subscriptions {
     $subs,
     sub {
       my ($c, $sub, $feed, $info) = @_;
-      delete $all{$sub->{xmlurl}};
       if (!$feed) {
+        my $err = $info->{'error'};
+        unless($err) {
+          print STDERR "No feed and no error message, ", $self->app->dumper($info);
+        }
         $self->backend->log->warn("Problem getting feed:", $info->{'error'});
         $sub->{active} = 0;
       }
@@ -82,12 +85,15 @@ sub fetch_subscriptions {
         $self->backend->update_feed(
           $sub, $feed,
           sub {
-            $self->backend->feeds->update({_id => $sub->{'_id'}}, $sub);
+            $self->backend->feeds->update({_id => $sub->{'_id'}}, $sub,
+            sub { 
+              delete $all{$sub->{xmlUrl}};
+              $self->backend->log->info('Operation -- COMPLETE!')
+                if (0 == scalar keys %all);
+            });
           }
         );
       }
-      $self->backend->log->info('Operation -- COMPLETE!')
-        if (0 == scalar keys %all);
     }
   );
 }
