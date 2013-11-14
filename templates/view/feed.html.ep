@@ -34,15 +34,16 @@
 <div class="affix col-md-2 visible-lg" id="sidebar">
 <h2>Your Menu</h2>
 A sidebar, maybe?
-<ul class="pager">
-<li id="before" class="previous"><a href="#">Earlier</a></li>
-<li id="after" class="next"><a href="#">Later</a></li>
-</ul>
 <ul class="toc nav nav-pills nav-stacked">
 </ul>
 </div>
-<div id="feeds" class="col-md-9 col-md-offset-3">
+<div class="col-md-9 col-md-offset-3">
 <h2>Your Feed</h2>
+<div id="feeds">
+</div>
+<ul class="pager">
+<li id="before" class="previous"><a href="#">Earlier</a></li>
+</ul>
 </div>
 
 <script language="javascript">
@@ -70,7 +71,6 @@ A sidebar, maybe?
         last_on_page = this.items[this.items.length-1].published;
         first_on_page = this.items[0].published;
         $('#before a').attr('title', 'items earlier than ' + todate(last_on_page));
-        $('#after a').attr('title', 'items later than ' + todate(first_on_page));
         var toc = $('#sidebar ul.toc');
         toc.empty();
         $.each(this.items, function(i, val) {
@@ -79,7 +79,7 @@ A sidebar, maybe?
       });
 //        var start = '#c' + this.items[0]._id;
  //      document.location.hash=start;
-        $('.toc li:eq(0)').addClass('active');
+//        $('.toc li:eq(0)').addClass('active');
         $(document.body).scrollspy('refresh');
       }
     });
@@ -89,7 +89,6 @@ A sidebar, maybe?
     feeds.load();
     f = 1;
       $('#before a').click(earlier);
-      $('#after a').click(later);
       $('#feeds').on('click', 'a.origin', load_feed);
     }
    };
@@ -123,11 +122,6 @@ A sidebar, maybe?
   function earlier() {
     feeds.load(feeds.url, { before: last_on_page });
 //    hadashot.subsLoad('#feeds', 'feed_tmpl', '/feed/river/?js=1&before=' + last_on_page, 'items');
-    return false;
-  }
-  function later() {
-    feeds.load(feeds.url, { after: first_on_page });
-    // hadashot.subsLoad('#feeds', 'feed_tmpl', '/feed/river/?js=1&after=' + first_on_page, 'items');
     return false;
   }
   function load_feed(ev) {

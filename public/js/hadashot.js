@@ -85,12 +85,15 @@ var hadashot = (function(doc,jq,me){
       var c = this;
       jq.getJSON(this.url, this.args,
         function(resp) {
-          c.items = resp[c.settings.root];
+          c.items = c.items.concat( resp[c.settings.root] );
           c.render();
           if (c.settings.onload && jq.isFunction(c.settings.onload)) {
               c.settings.onload.call(c);
           };
       });
+    },
+    empty: function() {
+      this.items = [];
     }
   }; // end hadashot.collection.prototype
   return me;
