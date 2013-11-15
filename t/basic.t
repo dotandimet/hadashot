@@ -40,8 +40,24 @@ $t->app->parse_rss(
 $delay->wait unless (Mojo::IOLoop->is_running);
 
 # fetch it:
-say $t->get_ok('/feed/river?js=1')->json_is('/total', 2)->json_is('/items/0/tags', ["Travel"])->tx->res->body;
+$t->get_ok('/feed/river?js=1')->json_is('/total', 2)->json_is('/items/0/tags', ["Travel"]);
 
+# reset eveything:
+
+$b->reset();
+$b->setup();
+
+# add a subscription via web:
+
+$t->post_ok('/settings/add_subscription', form => {url => '/link1.html'})->status_is(302)->header_like(Location => qr{view/feed\?src=.+/atom\.xml$});
+
+# fetch it:
+say $t->get_ok('/settings/blogroll?js=1')->status_is(200)
+  ->content_type_is('application/json')->json_is('/subs/0/items' => 2)
+  ->json_is('/subs/0/title' => 'First Weblog')->tx->res->body;
+
+# read it:
+$t->get_ok('/feed/river?js=1')->json_is('/total', 2)->json_is('/items/0/tags', ["Travel"]);
 
 
 done_testing();

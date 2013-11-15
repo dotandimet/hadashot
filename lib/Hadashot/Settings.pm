@@ -96,32 +96,33 @@ sub add_subscription {
     $self->find_feeds(
       $url,
       sub {
-        print STDERR ($self->app->dumper($_)) for (@_);
-        $self->render(text => "No feeds found for $url :(") && return
-          unless (@_ > 0);
-        my $xmlUrl
-          = shift @{$_[0]};    # TODO add support for multiple feeds later ...
+        #print STDERR ($self->app->dumper($_)) for (@_);
+        my ($c, $info, @feeds) = @_;
+        $self->render(text => "No feeds found for $url :("
+            . (($info->{error}) ? $info->{error} : ''))
+          && return
+          unless (@feeds > 0);
+        my $xmlUrl = shift @feeds;
+        # TODO add support for multiple feeds later ...
         print STDERR ("Found feed: $xmlUrl");
         $self->app->process_feeds(
           [{ xmlUrl => $xmlUrl }],
           sub {
-            my ($self, $sub, $feed, $code, $err) = @_;
+            my ($ca, $sub, $feed, $inf) = @_;
             if (!$feed) {
-              print STDERR ( "Problem getting feed:",
-                (($code) ? "Error code $code" : ''),
-                (($err)  ? "Error $err"       : '') );
+              print STDERR ( "Problem parsing feed:",
+                (($info->{error}) ? "Error " . $info->{error} : ''));
             }
             else {
-              $sub = $self->backend->save_subscription($sub);
-              $self->backend->update_feed($sub, $feed);
-              $self->backend->feeds->update({_id => $sub->{'_id'}}, $sub);
-              $self->app->log->debug('Still here?');
-              my $dest
-                = $self->url_for('/view/feed')->query({src => $xmlUrl});
-              $self->app->log->debug("Yeah! Go Here! " . $dest);
-              $self->redirect_to($dest);
+              $self->backend->update_feed($sub, $feed, sub {
+                $self->backend->save_subscription($sub,
+                  sub {
+                    my $dest
+                      = $self->url_for('/view/feed')->query({src => $xmlUrl});
+                    $self->redirect_to($dest);
+                  }) 
+              } );
             }
-            $self->render(text => 'hey look, I am here!');
           }
         );
       }

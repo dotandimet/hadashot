@@ -6,7 +6,7 @@ use Mojo::JSON;
 use Mojo::Util qw(decode slurp trim);
 use Mojo::IOLoop;
 use Mango;
-use Mango::BSON qw(bson_time);
+use Mango::BSON qw(bson_time bson_true);
 
 has conf  => sub { {} };
 has dbh   => sub { Mango->new($_[0]->conf->{'db_connect'}) };
@@ -73,28 +73,18 @@ sub parse_opml {
 
 sub save_subscription {
   my ($self, $sub, $cb) = @_;
-  unless ($sub->{xmlUrl} && $sub->{title}) {
-    $self->log->warn(
-      "Missing fields - will not save object" . $self->json->encode($sub));
-    return;    # will not call your callback, will return undef.
-  }
-  my $doc;
-
-#    $sub->{direction} = $self->get_direction( $sub->{'title'} );  # set rtl flag
-  $doc = $self->feeds->find_one({xmlUrl => $sub->{xmlUrl}});
-  unless ($doc) {
-    my $oid = $self->feeds->insert($sub);
-    if ($oid) {
-      $self->log->info($sub->{title}, " stored with id $oid\n");
-      $doc = {%$sub, _id => $oid};
-    }
-  }
-  if ($cb && ref $cb eq 'CODE') {
-    $cb->($doc);
-  }
-  else {
-    return $doc;
-  }
+  my $delay;
+  unless ($cb && ref $cb eq 'CODE') {
+    $delay = Mojo::IOLoop->delay(sub { return @_ });
+    $cb = $delay->begin;
+  };
+  $self->feeds->update(
+    {xmlUrl => $sub->{xmlUrl}},
+    { '$set' => $sub },
+    { upsert => bson_true },
+    $cb
+  );
+  $delay->wait if ($delay && ! Mojo::IOLoop->is_running);
 }
 
 sub get_direction {
@@ -116,7 +106,8 @@ sub update_feed {
       $sub->{$field} = $feed->{$field};
     }
   }
-  my $delay = Mojo::IOLoop->delay(sub { $cb->(@_); });
+  my $delay = Mojo::IOLoop->delay();
+  $delay->on(finish => $cb) if ($cb);
   $delay->on('error' => sub { die "Error in update_feed:", @_; });
   foreach my $item (@{$feed->{'items'}}) {
     my $end = $delay->begin(0);
