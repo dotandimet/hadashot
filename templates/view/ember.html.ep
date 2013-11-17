@@ -1,5 +1,13 @@
-% layout 'ember';
+% layout 'bootstrap';
 % title 'Now with javascript';
+% content_for extra_scripts => begin
+     %= javascript url_for('/js/libs/handlebars-1.0.0.js')
+     %= javascript url_for('/js/libs/ember-1.0.0.js')
+     %= javascript url_for('/js/libs/moment-2.2.1.js')
+     %= javascript url_for('/js/libs/moment-timezone-0.0.1.js')
+     %= javascript url_for('/js/ember-app.js')
+% end
+
 <script type="text/x-handlebars">
 {{outlet}}
 </script>

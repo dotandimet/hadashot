@@ -5,6 +5,7 @@
      <meta name="viewport" content="width=device-width, initial-scale=1.0">
      %= stylesheet url_for("/css/bootstrap.min.css")
      %= stylesheet url_for("/css/font-awesome.min.css")
+     %= content_for 'extra_styles'
   <style type="text/css">
   body { 
     padding-top: 60px;
@@ -66,8 +67,6 @@
 
      %= javascript url_for('/js/libs/jquery-1.9.1.js')
      %= javascript url_for("/js/libs/bootstrap-3.0.0.js")
-     %= javascript url_for('/js/libs/moment-2.2.1.js')
-     %= javascript url_for('/js/libs/moment-timezone-0.0.1.js')
-     %= javascript url_for('/js/hadashot.js')
+     %= content_for 'extra_scripts' 
   </body>
 </html>

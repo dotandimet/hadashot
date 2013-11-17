@@ -66,7 +66,7 @@ var hadashot = (function(doc,jq,me){
       }
       return me.tmpl(this.settings.item_template); // tmpl caches for us
     },
-    render: function (container) {
+    render: function (append) {
         var tmpl_func = this.template();
         // console.log(sub.toSource());
         var items = this.items;

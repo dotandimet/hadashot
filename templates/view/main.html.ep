@@ -1,5 +1,10 @@
 % layout 'bootstrap';
 % title 'Now with javascript';
+% content_for extra_scripts => begin
+     %= javascript url_for('/js/libs/moment-2.2.1.js')
+     %= javascript url_for('/js/libs/moment-timezone-0.0.1.js')
+     %= javascript url_for('/js/hadashot.js')
+% end
 <script type="text/html" id="blogroll_tmpl">
 <div class="list-group-item">
 <div class="list-group-item-heading">

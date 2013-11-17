@@ -1,10 +1,17 @@
 % layout 'bootstrap';
 % title 'Feeds, Now with javascript';
+% content_for extra_scripts => begin
+     %= javascript url_for('/js/libs/moment-2.2.1.js')
+     %= javascript url_for('/js/libs/moment-timezone-0.0.1.js')
+     %= javascript url_for('/js/hadashot.js')
+% end
 <script type="text/html" id="feed_tmpl">
 <div class="entry" id="c<%%= obj._id %>">
   <h4 class="title"><a href="<%%= obj.link %>" dir="<%%= obj.title.dir %>"><%%= obj.title.content %></a></h4>
   <p class=""><%%= todate(obj.published) %>
-  <a href="/feed/debug/?_id=<%%= obj._id %>">debug</a> <i>Source: <a class="origin" href="<%%= obj.origin %>"><%%= obj.origin %></a></i></p>
+  <a href="/feed/debug/?_id=<%%= obj._id %>">debug</a>
+ <a class="origin icon-rss" href="<%%= window.encodeURIComponent(obj.origin) %>" title="Source: <%%= obj.origin %>"> </a>
+</p>
 <%% if (obj.tags) { %>
 <p class="tags"> tags: [ <%% obj.tags.map(function(t){return %>
 <a class="tag" href="?tag=<%%= window.encodeURIComponent(t) %>"><%%= t %></a>
@@ -26,7 +33,7 @@
 }
 .entry img, .entry iframe, .entry object {
   max-width: 100%;
-  height: auto;
+  max-height: 100%;
 }
 
 
