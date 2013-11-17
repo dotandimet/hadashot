@@ -1,0 +1,4 @@
+Adapted directly from The Ext.js 4.2.0 example, here:
+http://docs.extjs.com/extjs/4.2.0/#!/example/feed-viewer/feed-viewer.html
+As long at there is Ext.js code in this repo, assume that all code at
+https://github.com/dotandimet/hadashot falls under the terms of the GPL3 license.
