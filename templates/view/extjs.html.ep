@@ -2,13 +2,15 @@
 % title 'Now with ext.js';
 % content_for extra_scripts => begin
   %= javascript url_for("http://cdn.sencha.com/ext/gpl/4.2.0/ext-all.js")
+  %= javascript url_for("http://cdn.sencha.com/ext/gpl/4.2.0/packages/ext-theme-neptune/build/ext-theme-neptune.js")
   %= javascript url_for('/js/ext-app.js')
 % end;
 
 % content_for extra_styles => begin
   %= stylesheet url_for("http://cdn.sencha.com/ext/gpl/4.2.0/resources/css/ext-all.css")
+  %= stylesheet url_for("http://cdn.sencha.com/ext/gpl/4.2.0/resources/css/ext-all-neptune.css")
 % end;
 
-<div class="container">
+<div id="app">
 </div> 
 
