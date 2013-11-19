@@ -30,6 +30,7 @@ Ext.define('FeedViewer.App', {
             {
                 name: 'pubDate',
                 type: 'date',
+                dateFormat: 'time',
                 mapping: 'published'
             },
             'link',
