@@ -20,26 +20,76 @@ class="badge"><%%= (obj.items) ? obj.items : 0 %></a>
 <%% if (obj.categories) { %>
 <%%= $.map(obj.categories, function(v,i) { return '<span class="label label-default">' + v + '</span>'; }).join(' ') %>
 <%% } else {console.log(obj.xmlUrl + ' is uncategorized')} %>
+<!--
 <%% if (obj.last_modified) { %>
 Last Modified: <%%= moment(obj.last_modified).fromNow() %>
 <%% } %>
 <%% if (obj.etag) { %>
 Etag: <%%= obj.etag %>
-<%% } %>
+<%% } %> -->
 </div>
 <%% if (!obj.active || obj.active === 0) { %></del> <%% } %>
 </div>
 </script>
-
-<div id="sublist" class="col-md-7 col-md-offset-2 list-group">
-<p>It looks like you aren't subscribed to any feeds.</p>
-<p>Use <b>Settings -> Import...</b> to load some.</p>
+<script type="text/html" id="feed_tmpl">
+<div class="entry" id="c<%%= obj._id %>">
+  <h4 class="title"><a href="<%%= obj.link %>" dir="<%%= obj.title.dir %>"><%%= obj.title.content %></a></h4>
+  <p class=""><%%= todate(obj.published) %>
+  <a href="/feed/debug/?_id=<%%= obj._id %>">debug</a>
+ <a class="origin icon-rss" href="<%%= window.encodeURIComponent(obj.origin) %>" title="Source: <%%= obj.origin %>"> </a>
+</p>
+<%% if (obj.tags) { %>
+<p class="tags"> tags: [ <%% obj.tags.map(function(t){return %>
+<a class="tag" href="?tag=<%%= window.encodeURIComponent(t) %>"><%%= t %></a>
+<%% }).join(','); %> ]</p>
+<%% } %>
+  <%% if (obj.content) { %>
+  <div class="content" dir="<%%= obj.content.dir %>"><%%= obj.content.content %></div>
+  <%% } %>
+  <%% if (!obj.content && obj.description) { %>
+  <div class="well" dir="<%%= obj.description.dir %>"><%%= obj.description.content %></div>
+  <%% } %>
 </div>
+</script>
+
+<style type="text/css">
+#feeds {
+/*  overflow: auto;
+  position: relative;
+  height: 600px; */
+}
+.entry img, .entry iframe, .entry object {
+  max-width: 100%;
+  max-height: 100%;
+}
+</style>
+<div class="container">
+  <div class="row">
+    <div id="sublist" class="col-md-3 list-group">
+      <p>It looks like you aren't subscribed to any feeds.</p>
+      <p>Use <b>Settings -> Import...</b> to load some.</p>
+    </div>
+    <div class="col-md-9">
+      <h2>Your Feed</h2>
+      <div id="feeds">
+      </div>
+      <ul class="pager">
+        <li id="before" class="previous"><a href="#">Earlier</a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
 <script language="javascript">
   var f = 0;
   document.onreadystatechange = 
   function(){
     if (f == 0) {
+      $(initPage);
+    }  
+    f = 1;
+    };
+  function initSubs() {  
       subs = new hadashot.collection({
         item_template: 'blogroll_tmpl',
         url: '/settings/blogroll',
@@ -53,8 +103,89 @@ Etag: <%%= obj.etag %>
         }
       });
       subs.load();
-    f = 1;
-    }
+  };
+  var last_on_page = new Date().getTime();
+  var first_on_page = 0;
+  function todate(tim) {
+    return new Date(parseInt(tim));
+  };
+  function dirp(od) {
+    return (od === 'rtl') 
+      ? 'align="right" dir="rtl"' 
+      : 'align="left" dir="ltr"';
    };
+   function initFeeds() {
+    var arg = query_str_to_obj(document.location.search.substr(1));
+    feeds = new hadashot.collection({
+      item_template: 'feed_tmpl',
+      url: '/feed/river/',
+      args: arg,
+      root: 'items',
+      onload: function() {
+        last_on_page = this.items[this.items.length-1].published;
+        first_on_page = this.items[0].published;
+        $('#before a').attr('title', 'items earlier than ' + todate(last_on_page));
+        var toc = $('#sidebar ul.toc');
+        toc.empty();
+        $.each(this.items, function(i, val) {
+            var link = $('<a>').text(val.title.content).attr('href', '#c' + val._id).attr('dir', val.title.dir);
+            $('<li>').appendTo(toc).append(link);
+      });
+//        var start = '#c' + this.items[0]._id;
+ //      document.location.hash=start;
+//        $('.toc li:eq(0)').addClass('active');
+        $(document.body).scrollspy('refresh');
+      }
+    });
+    $('#feeds').append(feeds.el);
+    $(document.body).scrollspy({target: '#sidebar', offset: 80});
+    // $('#feeds').scrollspy({target: '#sidebar'});
+    feeds.load();
+      $('#before a').click(earlier);
+      $('#feeds').on('click', 'a.origin', load_feed);
+   };
+
+   function initPage() {
+      initSubs();
+      initFeeds();
+   }
+
+  function query_str_to_obj(q, o) {
+    if (o === undefined) {
+      o = { js : 1 };
+    }
+    var arg_pairs = q.split('&');
+    for(var i=0; i < arg_pairs.length; i++) {
+      var kv = arg_pairs[i].split('=');
+      if (kv.length == 2) {
+        var k = window.decodeURIComponent(kv[0]);
+        var v = window.decodeURIComponent(kv[1]);
+        o[k] = v;
+      }
+    }
+    return o;
+  }
+
+  function obj_to_query_str(o) {
+    var s = '';
+    var args = [];
+    for(var k in o) {
+      args.push(window.encodeURIComponent(k) + '=' + window.encodeURIComponent(o[k]));
+    }
+    s += args.join('&');
+    return s;
+  }
+
+  function earlier() {
+    feeds.load(feeds.url, { before: last_on_page });
+//    hadashot.subsLoad('#feeds', 'feed_tmpl', '/feed/river/?js=1&before=' + last_on_page, 'items');
+    return false;
+  }
+  function load_feed(ev) {
+    ev.preventDefault();
+    feeds.load(feeds.url, { src: this.href });
+    // hadashot.subsLoad('#feeds', 'feed_tmpl', '/feed/river/?js=1&src=' + this.href, 'items');
+    return false;
+  }
 </script>
 
