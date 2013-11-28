@@ -32,23 +32,26 @@ Etag: <%%= obj.etag %>
 </div>
 </script>
 <script type="text/html" id="feed_tmpl">
-<div class="entry" id="c<%%= obj._id %>">
-  <h4 class="title"><a href="<%%= obj.link %>" dir="<%%= obj.title.dir %>"><%%= obj.title.content %></a></h4>
-  <p class=""><%%= todate(obj.published) %>
+<div class="entry panel panel-default" id="c<%%= obj._id %>">
+  <div class="panel-heading">
+  <h4 class="title panel-title"><a href="<%%= obj.link %>" dir="<%%= obj.title.dir %>"><%%= obj.title.content %></a></h4>
+  <%%= todate(obj.published) %>
   <a href="/feed/debug/?_id=<%%= obj._id %>">debug</a>
  <a class="origin icon-rss" href="<%%= window.encodeURIComponent(obj.origin) %>" title="Source: <%%= obj.origin %>"> </a>
-</p>
 <%% if (obj.tags) { %>
-<p class="tags"> tags: [ <%% obj.tags.map(function(t){return %>
-<a class="tag" href="?tag=<%%= window.encodeURIComponent(t) %>"><%%= t %></a>
-<%% }).join(','); %> ]</p>
+<%% obj.tags.map(function(t){return %>
+<a class="tag label label-default" href="?tag=<%%= window.encodeURIComponent(t) %>"><%%= t %></a>
+<%% }).join(','); %>
 <%% } %>
+</div>
+<div class="panel-body">
   <%% if (obj.content) { %>
   <div class="content" dir="<%%= obj.content.dir %>"><%%= obj.content.content %></div>
   <%% } %>
   <%% if (!obj.content && obj.description) { %>
   <div class="well" dir="<%%= obj.description.dir %>"><%%= obj.description.content %></div>
   <%% } %>
+</div>
 </div>
 </script>
 
@@ -62,6 +65,7 @@ Etag: <%%= obj.etag %>
   max-width: 100%;
   max-height: 100%;
 }
+
 </style>
 <div class="container">
   <div class="row">
@@ -135,6 +139,7 @@ Etag: <%%= obj.etag %>
  //      document.location.hash=start;
 //        $('.toc li:eq(0)').addClass('active');
         $(document.body).scrollspy('refresh');
+        $('#feeds .origin').tooltip();
       }
     });
     $('#feeds').append(feeds.el);
