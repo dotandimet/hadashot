@@ -94,6 +94,10 @@ var hadashot = (function(doc,jq,me){
     },
     empty: function() {
       this.items = [];
+    },
+    find: function(query) {
+      var res = this.items.filter(function(item) { return (item[query[0]] === query[1]); });
+      return res;
     }
   }; // end hadashot.collection.prototype
   return me;
