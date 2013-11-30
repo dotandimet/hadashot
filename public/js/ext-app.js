@@ -1,6 +1,3 @@
-Ext.define(
-
-)
 Ext.application({
     name: 'Hadashot',
     launch: function() {

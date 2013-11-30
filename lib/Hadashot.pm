@@ -65,6 +65,7 @@ sub fetch_subscriptions {
   else {
     $subs = $self->backend->feeds->find({"active" => 1})->all();
   }
+  $subs = [ shuffle @$subs ];
   my %all = map { $_->{xmlUrl} => $_ } @$subs;
   my $total = scalar @$subs;
   $self->backend->log->info("Will check $total feeds");
