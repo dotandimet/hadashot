@@ -7,7 +7,7 @@
 % end
 <script type="text/html" id="blogroll_tmpl">
 <div class="list-group-item">
-<div class="list-group-item-heading">
+<div class="list-group-item-heading<%% if (obj.error) { %> has-error<%% } %>">
 <%% if (!obj.active || obj.active === 0) { %><del> <%% } %>
 <a href="<%%=obj.xmlUrl%>"><i class="icon-rss"></i> rss</a>
 <a href="<%%=obj.htmlUrl%>" dir="ltr"><%%=obj.title%></a>
@@ -28,6 +28,8 @@ Last Modified: <%%= moment(obj.last_modified).fromNow() %>
 Etag: <%%= obj.etag %>
 <%% } %> -->
 </div>
+<%% if (obj.error) { %><span class="glyphicon glyphicon-warning-sign"
+title="<%%=obj.error %>" data-toggle="tooltip"></span><%% } %>
 <%% if (!obj.active || obj.active === 0) { %></del> <%% } %>
 </div>
 </script>

@@ -29,7 +29,7 @@ sub enqueue {
   if ($job && ref $job eq 'HASH') {
     die "enqueue requires a url key in the hashref argument" unless ($job->{'url'} && Mojo::URL->new($job->{'url'}));
     die "enqueue requires a callback (cb key) in the hashref argument" unless ($job->{'cb'} && ref $job->{'cb'} eq 'CODE');
-  # other valid keys: headers, data
+  # other valid keys: headers, data, method
   push @{$self->jobs}, $job;
   return $self->pending;
   }
@@ -45,10 +45,11 @@ sub process {
   my ($self) = @_;
   # we have jobs and can run them:
   while ($self->active < $self->max and my $job = $self->dequeue) {
-      my ($url, $headers, $cb, $data) = map { $job->{$_} } (qw(url headers cb data));
+      my ($url, $headers, $cb, $data, $method) = map { $job->{$_} } (qw(url headers cb data method));
+      $method ||= 'get';
       $self->active($self->active+1);
       my $end = $self->delay->begin();
-      $self->ua->get($url => $headers => sub {
+      $self->ua->$method($url => $headers => sub {
         my ($ua, $tx) = @_;
         $end->();
         $self->active($self->active-1);

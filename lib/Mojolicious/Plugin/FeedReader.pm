@@ -9,7 +9,7 @@ use HTTP::Date;
 sub register {
   my ($self, $app) = @_;
   foreach my $method (
-    qw(process_feeds process_feed parse_rss parse_rss_dom parse_rss_channel parse_rss_item find_feeds)
+    qw(process_feeds process_feed parse_rss parse_rss_dom parse_rss_channel parse_rss_item find_feeds set_req_headers req_info)
     )
   {
     $app->helper($method => \&{$method});
@@ -154,7 +154,7 @@ sub parse_rss_item {
 }
 
 sub req_info {
-	my ($tx) = @_;
+	my ($tx) = pop;
 	my %info = ( url => $tx->req->url );
     if (my $res = $tx->success) {
       $info{'code'} = $res->code;
@@ -182,7 +182,7 @@ sub req_info {
 
 # set request conditional headers from saved last_modified and etag headers
 sub set_req_headers { 
-  my $h = shift;
+  my $h = pop;
   my %headers;    
 	$headers{'If-Modified-Since'} = $h->{last_modified} if ($h->{last_modified});
 	$headers{'If-None-Match'} = $h->{etag} if ($h->{etag});

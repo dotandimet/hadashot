@@ -34,7 +34,7 @@ sub startup {
     backend => sub {
       state $bak = Hadashot::Backend->new(
         conf => $config,
-        ua   => $self->ua,
+        queue => Hadashot::Backend::Queue->new(ua => $self->ua),
         log  => $self->log
       );
     }
@@ -67,35 +67,49 @@ sub fetch_subscriptions {
   }
   my %all = map { $_->{xmlUrl} => $_ } @$subs;
   my $total = scalar @$subs;
+  $self->ua->max_redirects(5)->connect_timeout(30);
   $self->backend->log->info("Will check $total feeds");
-  $self->process_feeds(
-    $subs,
-    sub {
-      my ($c, $sub, $feed, $info) = @_;
-      if (!$feed) {
-        my $err = $info->{'error'};
-        unless($err) {
-          print STDERR "No feed and no error message, ", $self->app->dumper($info);
-        }
-        $self->backend->log->warn("Problem getting feed:", $info->{'error'});
-        $sub->{active} = 0;
-      }
-      else {
-        $sub->{active} = 1;
-        $self->backend->update_feed(
-          $sub, $feed,
-          sub {
-            $self->backend->feeds->update({_id => $sub->{'_id'}}, $sub,
-            sub { 
-              delete $all{$sub->{xmlUrl}};
-              $self->backend->log->info('Operation -- COMPLETE!')
-                if (0 == scalar keys %all);
-            });
+  foreach my $sub (@$subs) {
+    $self->backend->queue->enqueue(
+      {
+        url     => $sub->{xmlUrl},
+        headers => {$self->set_req_headers($sub)},
+        cb      => sub {
+          my ($ua, $tx) = @_;
+          $self->process_feed(
+            $sub, $tx,
+            sub {
+              my ($c, $sub, $feed, $info) = @_;
+              if (!$feed) {
+                my $err = $info->{'error'};
+                unless ($err) {
+                  print STDERR "No feed and no error message, ",
+                    $self->app->dumper($info);
+                }
+                $self->backend->log->warn("Problem getting feed:", $sub->{xmlUrl}, 
+                  $info->{'error'});
+                $sub->{active} = 0;
+                $sub->{error} = $info->{'error'};
+                $self->backend->save_subscription($sub);
+              }
+              else {
+                $sub->{active} = 1;
+                $self->backend->update_feed(
+                  $sub, $feed,
+                  sub {
+                    delete $all{$sub->{xmlUrl}};
+                    $self->backend->log->info('Operation -- COMPLETE!')
+                      if (0 == scalar keys %all);
+                  }
+                );
+              }
+            }
+          );
           }
-        );
       }
-    }
-  );
+    );
+  };
+  $self->backend->queue->process();
 }
 
 1;

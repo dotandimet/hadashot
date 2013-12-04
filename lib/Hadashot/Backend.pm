@@ -8,12 +8,14 @@ use Mojo::IOLoop;
 use Mango;
 use Mango::BSON qw(bson_time bson_true);
 
+use Hadashot::Backend::Queue;
+
 has conf  => sub { {} };
 has dbh   => sub { Mango->new($_[0]->conf->{'db_connect'}) };
 has db    => sub { $_[0]->dbh->db($_[0]->conf->{'db_name'}); };
 has json  => sub { Mojo::JSON->new(); };
 has dom   => sub { Mojo::DOM->new(); };
-has ua    => sub { Mojo::UserAgent->new(); };
+has queue    => sub { Hadashot::Backend::Queue->new(); };
 has feeds => sub { $_[0]->db()->collection($_[0]->conf->{'db_feeds'}) };
 has items => sub { $_[0]->db()->collection($_[0]->conf->{'db_items'}) };
 has bookmarks =>
@@ -107,7 +109,7 @@ sub update_feed {
     }
   }
   my $delay = Mojo::IOLoop->delay();
-  $delay->on(finish => $cb) if ($cb);
+  $delay->on(finish => sub { $self->save_subscription($sub, $cb) });
   $delay->on('error' => sub { die "Error in update_feed:", @_; });
   foreach my $item (@{$feed->{'items'}}) {
     my $end = $delay->begin(0);
@@ -208,25 +210,28 @@ sub unshorten_url {
   my $url   = shift;
   my $cb    = (ref $_[-1] eq 'CODE') ? pop : undef;
   my $final = $url;
-  $self->ua->max_redirects(10);
+  $self->queue->ua->max_redirects(10);
   if ($cb) {    # try non-blocking
-    $self->ua->head(
-      $url,
-      sub {
-        my ($ua, $tx) = @_;
-        if ($tx->success) {
-          $self->log->info("Redirects " . join q{, },
-            map { $_->req->url } (@{$tx->redirects}));
-          $cb->($tx->req->url);
-        }
-        else {
-          $self->log->error($tx->error);
+    $self->queue->enqueue( # will use get; should use head
+      { 
+        method => 'head',
+        url => $url, 
+        cb  => sub {
+          my ($ua, $tx) = @_;
+          if ($tx->success) {
+            $self->log->info("Redirects " . join q{, },
+              map { $_->req->url } (@{$tx->redirects}));
+            $cb->($tx->req->url);
+          }
+          else {
+            $self->log->error($tx->error);
+          }
         }
       }
     );
   }
   else {
-    my $tx = $self->ua->head($url);
+    my $tx = $self->queue->ua->head($url);
     return $tx->req->url;
   }
 }
