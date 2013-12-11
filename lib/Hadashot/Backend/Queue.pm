@@ -2,6 +2,7 @@ package Hadashot::Backend::Queue;
 use Mojo::Base '-base';
 use Mojo::IOLoop;
 use Mojo::UserAgent;
+use Mojo::Util 'monkey_patch';
 
 has max => sub { $_[0]->ua->max_connections || 4 };
 has active => sub { 0 };
@@ -21,6 +22,18 @@ sub pending {
   my $self = shift;
   return scalar @{$self->jobs};
 };
+
+for my $name (qw(delete get head options patch post put)) {
+  monkey_patch __PACKAGE__, $name, sub {
+    my $self = shift;
+    my $job = { method => $name };
+    my $cb = ref $_[-1] eq 'CODE' ? pop : undef;
+    $job->{'cb'} = $cb if ($cb);
+    $job->{'url'} = shift;
+    $job->{'headers'} = { @_ } if (scalar @_ > 1 && @_ % 2 == 0);
+    return $self->enqueue($job);
+  };
+}
 
 sub enqueue {
   my $self = shift;

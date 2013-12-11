@@ -66,15 +66,21 @@ sub fetch_subscriptions {
     $subs = $self->backend->feeds->find({"active" => 1})->all();
   }
   my %all = map { $_->{xmlUrl} => $_ } @$subs;
+  sub cb {
+    my $url = shift;
+    return sub {
+      delete $all{$url};
+      $self->backend->log->info('Operation -- COMPLETE!')
+        if (0 == scalar keys %all);
+    }
+  };
   my $total = scalar @$subs;
   $self->ua->max_redirects(5)->connect_timeout(30);
   $self->backend->log->info("Will check $total feeds");
   foreach my $sub (@$subs) {
-    $self->backend->queue->enqueue(
-      {
-        url     => $sub->{xmlUrl},
-        headers => {$self->set_req_headers($sub)},
-        cb      => sub {
+    $self->backend->queue->get(
+        $sub->{xmlUrl}, $self->set_req_headers($sub),
+        sub {
           my ($ua, $tx) = @_;
           $self->process_feed(
             $sub, $tx,
@@ -86,27 +92,27 @@ sub fetch_subscriptions {
                   print STDERR "No feed and no error message, ",
                     $self->app->dumper($info);
                 }
-                $self->backend->log->warn("Problem getting feed:", $sub->{xmlUrl}, 
-                  $info->{'error'});
-                $sub->{active} = 0;
-                $sub->{error} = $info->{'error'};
-                $self->backend->save_subscription($sub);
+                $self->backend->log->warn("Problem getting feed:", $sub->{xmlUrl}, $err);
+                if ($err eq 'url no longer points to a feed'
+                    || $err eq 'Not Found' ) {
+                  $self->backend->feeds->remove({xmlUrl => $sub->{xmlUrl}}, cb($sub->{xmlUrl}));
+                }
+                elsif ($err eq 'Not Modified') {
+                  return;
+                }
+                else {
+                  $sub->{active} = 0;
+                  $sub->{error} = $err;
+                  $self->backend->save_subscription($sub, cb($sub->{xmlUrl}));
+               }
               }
               else {
                 $sub->{active} = 1;
-                $self->backend->update_feed(
-                  $sub, $feed,
-                  sub {
-                    delete $all{$sub->{xmlUrl}};
-                    $self->backend->log->info('Operation -- COMPLETE!')
-                      if (0 == scalar keys %all);
-                  }
-                );
+                $self->backend->update_feed( $sub, $feed,cb($sub->{xmlUrl}) );
               }
             }
           );
           }
-      }
     );
   };
   $self->backend->queue->process();

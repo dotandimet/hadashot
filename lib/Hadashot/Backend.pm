@@ -212,11 +212,9 @@ sub unshorten_url {
   my $final = $url;
   $self->queue->ua->max_redirects(10);
   if ($cb) {    # try non-blocking
-    $self->queue->enqueue( # will use get; should use head
-      { 
-        method => 'head',
-        url => $url, 
-        cb  => sub {
+    $self->queue->head( # will use get; should use head
+        $url, 
+        sub {
           my ($ua, $tx) = @_;
           if ($tx->success) {
             $self->log->info("Redirects " . join q{, },
@@ -227,7 +225,6 @@ sub unshorten_url {
             $self->log->error($tx->error);
           }
         }
-      }
     );
   }
   else {
