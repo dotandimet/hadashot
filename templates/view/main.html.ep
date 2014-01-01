@@ -7,9 +7,9 @@
 % end
 <script type="text/html" id="blogroll_tmpl">
 <div class="list-group-item">
-<div class="list-group-item-heading">
+<div class="list-group-item-heading<%% if (obj.error) { %> has-error<%% } %>">
 <%% if (!obj.active || obj.active === 0) { %><del> <%% } %>
-<a href="<%%=obj.xmlUrl%>"><i class="icon-rss"></i> rss</a>
+<a href="<%%=obj.xmlUrl%>"><i class="fa fa-rss"></i> rss</a>
 <a href="<%%=obj.htmlUrl%>" dir="ltr"><%%=obj.title%></a>
 <a href="/view/feed?src=<%%= window.encodeURIComponent(obj.xmlUrl) %>"
 title="<%%=  (obj.last && obj.last > 0) ? 'Latest item: ' + moment(obj.last).fromNow() : '...' %>"
@@ -28,6 +28,8 @@ Last Modified: <%%= moment(obj.last_modified).fromNow() %>
 Etag: <%%= obj.etag %>
 <%% } %> -->
 </div>
+<%% if (obj.error) { %><span class="glyphicon glyphicon-warning-sign"
+title="<%%=obj.error %>" data-toggle="tooltip"></span><%% } %>
 <%% if (!obj.active || obj.active === 0) { %></del> <%% } %>
 </div>
 </script>
@@ -37,7 +39,7 @@ Etag: <%%= obj.etag %>
   <h4 class="title panel-title"><a href="<%%= obj.link %>" dir="<%%= obj.title.dir %>"><%%= obj.title.content %></a></h4>
   <%%= todate(obj.published) %>
   <a href="/feed/debug/?_id=<%%= obj._id %>">debug</a>
- <a class="origin icon-rss" href="<%%= window.encodeURIComponent(obj.origin) %>" title="Source: <%%= obj.origin %>"> </a>
+ <a class="origin fa fa-rss" href="<%%= window.encodeURIComponent(obj.origin) %>" title="Source: <%%= obj.origin %>"> </a>
 <%% if (obj.tags) { %>
 <%% obj.tags.map(function(t){return %>
 <a class="tag label label-default" href="?tag=<%%= window.encodeURIComponent(t) %>"><%%= t %></a>

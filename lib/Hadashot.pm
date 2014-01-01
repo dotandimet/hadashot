@@ -34,7 +34,7 @@ sub startup {
     backend => sub {
       state $bak = Hadashot::Backend->new(
         conf => $config,
-        ua   => $self->ua,
+        queue => Hadashot::Backend::Queue->new(ua => $self->ua),
         log  => $self->log
       );
     }
@@ -57,46 +57,11 @@ sub startup {
 }
 
 sub fetch_subscriptions {
-  my ($self, $check_all) = @_;
-  my $subs;
-  if ($check_all) {
-    $subs = $self->backend->feeds->find()->all();
-  }
-  else {
-    $subs = $self->backend->feeds->find({"active" => 1})->all();
-  }
-  $subs = [ shuffle @$subs ];
-  my %all = map { $_->{xmlUrl} => $_ } @$subs;
-  my $total = scalar @$subs;
-  $self->backend->log->info("Will check $total feeds");
-  $self->process_feeds(
-    $subs,
-    sub {
-      my ($c, $sub, $feed, $info) = @_;
-      if (!$feed) {
-        my $err = $info->{'error'};
-        unless($err) {
-          print STDERR "No feed and no error message, ", $self->app->dumper($info);
-        }
-        $self->backend->log->warn("Problem getting feed:", $info->{'error'});
-        $sub->{active} = 0;
-      }
-      else {
-        $sub->{active} = 1;
-        $self->backend->update_feed(
-          $sub, $feed,
-          sub {
-            $self->backend->feeds->update({_id => $sub->{'_id'}}, $sub,
-            sub { 
-              delete $all{$sub->{xmlUrl}};
-              $self->backend->log->info('Operation -- COMPLETE!')
-                if (0 == scalar keys %all);
-            });
-          }
-        );
-      }
-    }
-  );
+  my $self = shift;
+  $self->backend->fetch_subscriptions(@_);
 }
+
+
+
 
 1;

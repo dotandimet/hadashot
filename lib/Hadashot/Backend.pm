@@ -8,17 +8,22 @@ use Mojo::IOLoop;
 use Mango;
 use Mango::BSON qw(bson_time bson_true);
 
+use Mojolicious::Plugin::FeedReader;
+
+use Hadashot::Backend::Queue;
+
 has conf  => sub { {} };
 has dbh   => sub { Mango->new($_[0]->conf->{'db_connect'}) };
 has db    => sub { $_[0]->dbh->db($_[0]->conf->{'db_name'}); };
 has json  => sub { Mojo::JSON->new(); };
 has dom   => sub { Mojo::DOM->new(); };
-has ua    => sub { Mojo::UserAgent->new(); };
+has queue    => sub { Hadashot::Backend::Queue->new(); };
 has feeds => sub { $_[0]->db()->collection($_[0]->conf->{'db_feeds'}) };
 has items => sub { $_[0]->db()->collection($_[0]->conf->{'db_items'}) };
 has bookmarks =>
   sub { $_[0]->db()->collection($_[0]->conf->{'db_bookmarks'}) };
 has log => sub { Mojo::Log->new() };
+has feed_reader => sub { Mojolicious::Plugin::FeedReader->new() };
 
 # setup methods
 sub collection_exists {
@@ -107,13 +112,13 @@ sub update_feed {
     }
   }
   my $delay = Mojo::IOLoop->delay();
-  $delay->on(finish => $cb) if ($cb);
+  $delay->on(finish => sub { $self->save_subscription($sub, $cb) });
   $delay->on('error' => sub { die "Error in update_feed:", @_; });
   foreach my $item (@{$feed->{'items'}}) {
     my $end = $delay->begin(0);
     $item->{'origin'} = $sub->{xmlUrl};    # save our source feed...
          # fix relative links - because Sam Ruby is a wise-ass
-    $item->{'link'} = abs_url($item->{'link'}, $item->{'origin'});
+    $item->{'link'} = Mojo::URL->new($item->{'link'})->to_abs($item->{'origin'})->to_string;
     if ($item->{'link'} =~ m/feedproxy/) {    # cleanup feedproxy links
       $self->unshorten_url(
         $item->{'link'},
@@ -208,35 +213,27 @@ sub unshorten_url {
   my $url   = shift;
   my $cb    = (ref $_[-1] eq 'CODE') ? pop : undef;
   my $final = $url;
-  $self->ua->max_redirects(10);
+  $self->queue->ua->max_redirects(10);
   if ($cb) {    # try non-blocking
-    $self->ua->head(
-      $url,
-      sub {
-        my ($ua, $tx) = @_;
-        if ($tx->success) {
-          $self->log->info("Redirects " . join q{, },
-            map { $_->req->url } (@{$tx->redirects}));
-          $cb->($tx->req->url);
+    $self->queue->head( # will use get; should use head
+        $url, 
+        sub {
+          my ($ua, $tx) = @_;
+          if ($tx->success) {
+            $self->log->info("Redirects " . join q{, },
+              map { $_->req->url } (@{$tx->redirects}));
+            $cb->($tx->req->url);
+          }
+          else {
+            $self->log->error($tx->error);
+          }
         }
-        else {
-          $self->log->error($tx->error);
-        }
-      }
     );
   }
   else {
-    my $tx = $self->ua->head($url);
+    my $tx = $self->queue->ua->head($url);
     return $tx->req->url;
   }
-}
-
-sub abs_url {
-  my ($url, $base) = @_;
-  if (!$url || !Mojo::URL->new($url)->host) {
-    $url = Mojo::URL->new($base)->path($url)->to_abs->to_string;
-  }
-  return $url;
 }
 
 sub cleanup_feedproxy {
@@ -245,6 +242,68 @@ sub cleanup_feedproxy {
     $url->query->remove($_);
   }
   return $url;
+}
+
+sub fetch_subscriptions {
+  my ($self, $check_all) = @_;
+  my $subs;
+  if ($check_all) {
+    $subs = $self->feeds->find()->all();
+  }
+  else {
+    $subs = $self->feeds->find({"active" => 1})->all();
+  }
+  my %all = map { $_->{xmlUrl} => $_ } @$subs;
+  sub cb {
+    my $url = shift;
+    return sub {
+      delete $all{$url};
+      $self->log->info('Operation -- COMPLETE!')
+        if (0 == scalar keys %all);
+    }
+  };
+  my $total = scalar @$subs;
+  $self->queue->ua->max_redirects(5)->connect_timeout(30);
+  $self->log->info("Will check $total feeds");
+  foreach my $sub (@$subs) {
+    $self->queue->get(
+        $sub->{xmlUrl}, $self->feed_reader->set_req_headers($sub),
+        sub {
+          my ($ua, $tx) = @_;
+          $self->feed_reader->process_feed(
+            $sub, $tx,
+            sub {
+              my ($c, $sub, $feed, $info) = @_;
+              if (!$feed) {
+                my $err = $info->{'error'};
+                unless ($err) {
+                  print STDERR "No feed and no error message, ",
+                    $self->app->dumper($info);
+                }
+                $self->log->warn("Problem getting feed:", $sub->{xmlUrl}, $err);
+                if ($err eq 'url no longer points to a feed'
+                    || $err eq 'Not Found' ) {
+                  $self->feeds->remove({xmlUrl => $sub->{xmlUrl}}, cb($sub->{xmlUrl}));
+                }
+                elsif ($err eq 'Not Modified') {
+                  return;
+                }
+                else {
+                  $sub->{active} = 0;
+                  $sub->{error} = $err;
+                  $self->save_subscription($sub, cb($sub->{xmlUrl}));
+               }
+              }
+              else {
+                $sub->{active} = 1;
+                $self->update_feed( $sub, $feed,cb($sub->{xmlUrl}) );
+              }
+            }
+          );
+          }
+    );
+  };
+  $self->queue->process();
 }
 
 1;

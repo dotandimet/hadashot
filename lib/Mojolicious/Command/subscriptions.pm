@@ -11,16 +11,19 @@ Valid flags are:
 	-dump (default) - print JSON dump of parsed subscriptions
 	-store - save subscriptions in db
   -fetch - update all subscriptions
+  -active - only valid with -fetch; limits it to only valid feeds
 EOT
 
 sub run {
   my ($self, @args) = @_;
     GetOptionsFromArray \@args,
     'fetch' => \my $fetch,
+    'active' => \my $active,
     'store' => \my $store,
     'dump'  => \my $dump;
   if ($fetch) {
-    $self->app->fetch_subscriptions(1);
+    $active ||= undef;
+    $self->app->fetch_subscriptions($active);
   }
   else {
   my $opml_file = shift @args;
