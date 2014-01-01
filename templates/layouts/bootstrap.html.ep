@@ -4,7 +4,7 @@
      <title><%= title %></title>
      <meta name="viewport" content="width=device-width, initial-scale=1.0">
      %= stylesheet url_for("/css/bootstrap.min.css")
-     %= stylesheet url_for("/css/font-awesome.min.css")
+     %= stylesheet url_for("//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css")
      %= content_for 'extra_styles'
   <style type="text/css">
   body { 
