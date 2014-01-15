@@ -254,7 +254,7 @@ sub fetch_subscriptions {
     $subs = $self->feeds->find({"active" => 1})->all();
   }
   my %all = map { $_->{xmlUrl} => $_ } @$subs;
-  sub cb {
+  my $cb = sub {
     my $url = shift;
     return sub {
       delete $all{$url};
@@ -283,7 +283,7 @@ sub fetch_subscriptions {
                 $self->log->warn("Problem getting feed:", $sub->{xmlUrl}, $err);
                 if ($err eq 'url no longer points to a feed'
                     || $err eq 'Not Found' ) {
-                  $self->feeds->remove({xmlUrl => $sub->{xmlUrl}}, cb($sub->{xmlUrl}));
+                  $self->feeds->remove({xmlUrl => $sub->{xmlUrl}}, $cb->($sub->{xmlUrl}));
                 }
                 elsif ($err eq 'Not Modified') {
                   return;
@@ -291,12 +291,12 @@ sub fetch_subscriptions {
                 else {
                   $sub->{active} = 0;
                   $sub->{error} = $err;
-                  $self->save_subscription($sub, cb($sub->{xmlUrl}));
+                  $self->save_subscription($sub, $cb->($sub->{xmlUrl}));
                }
               }
               else {
                 $sub->{active} = 1;
-                $self->update_feed( $sub, $feed,cb($sub->{xmlUrl}) );
+                $self->update_feed( $sub, $feed,$cb->($sub->{xmlUrl}) );
               }
             }
           );
