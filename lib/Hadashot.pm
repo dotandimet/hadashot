@@ -26,7 +26,7 @@ sub startup {
       secret       => 'zasdcwdw2d'
     }
   );
-  $self->secret($self->config->{'secret'});
+  $self->secrets([$self->config->{'secret'}]);
 
   # our backend functionality:
 
