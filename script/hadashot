@@ -4,7 +4,12 @@ use strict;
 use warnings;
 
 use FindBin;
-BEGIN { unshift @INC, "$FindBin::Bin/../lib" }
+BEGIN { 
+  unshift @INC, "$FindBin::Bin/../lib";
+  if (-d "$FindBin::Bin/../../Mojolicious-Plugin-FeedReader/lib") {
+    unshift @INC, "$FindBin::Bin/../../Mojolicious-Plugin-FeedReader/lib";
+  }
+ }
 
 # Start command line interface for application
 require Mojolicious::Commands;
