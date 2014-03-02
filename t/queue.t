@@ -2,7 +2,7 @@
 use 5.016;
 use Hadashot::Backend::Queue;
 use Mojo::Util qw(encode);
-# use Test::More skip_all => "This is not a test";
+ use Test::More skip_all => "This is not a test";
 
 sub on_response {
   my ($ua, $tx, $totals) = @_;
