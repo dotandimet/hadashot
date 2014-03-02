@@ -1,0 +1,69 @@
+<?xml version="2.0" encoding="UTF-8"?>
+<opml version="1.0">
+    <head>
+        <title>מנויים של Dotan Dimet ב-Google Reader</title>
+    </head>
+    <body>
+        <outline text="New Scientist Space - Astrobiology"
+            title="New Scientist Space - Astrobiology" type="rss"
+            xmlUrl="http://www.pheedo.com/f/newscientist_astrobiology" htmlUrl="http://www.newscientist.com/"/>
+        <outline title="books" text="books">
+            <outline text="Asking the Wrong Questions"
+                title="Asking the Wrong Questions" type="rss"
+                xmlUrl="http://wrongquestions.blogspot.com/atom.xml" htmlUrl="http://wrongquestions.blogspot.com/"/>
+        </outline>
+        <outline title="gaming" text="gaming">
+            <outline text="Bibliomancer.Com" title="Bibliomancer.Com"
+                type="rss"
+                xmlUrl="http://feeds.feedburner.com/Bibliomancercom" htmlUrl="http://bibliomancer.com"/>
+            <outline text="Kenneth Hite" title="Kenneth Hite" type="rss"
+                xmlUrl="http://www.livejournal.com/users/princeofcairo/data/rss" htmlUrl="http://princeofcairo.livejournal.com/"/>
+        </outline>
+        <outline title="writing" text="writing">
+           <outline text="Charlie's Diary" title="Charlie's Diary"
+                type="rss"
+                xmlUrl="http://www.antipope.org/charlie/blog-static/atom.xml" htmlUrl="http://www.antipope.org/charlie/blog-static/"/>
+            <outline text="Cory Doctorow's craphound.com"
+                title="Cory Doctorow's craphound.com" type="rss"
+                xmlUrl="http://craphound.com/index.rdf" htmlUrl="http://craphound.com"/>
+        </outline>
+       <outline title="tech" text="tech">
+            <outline text="24 ways" title="24 ways" type="rss"
+                xmlUrl="http://feeds.feedburner.com/24ways" htmlUrl="http://24ways.org/"/>
+        </outline>
+        <outline title="blogia" text="blogia">
+            <outline text="החברים של ג'ורג'" title="החברים של ג'ורג'"
+                type="rss"
+                xmlUrl="http://www.hahem.co.il/friendsofgeorge/?feed=rss2" htmlUrl="http://www.hahem.co.il/friendsofgeorge"/>
+            <outline text="החברים של ג'ורג'" title="החברים של ג'ורג'"
+                type="rss"
+                xmlUrl="http://friendsofgeorge.blogli.co.il/feed/atom/" htmlUrl="http://friendsofgeorge.blogli.co.il"/>
+        </outline>
+        <outline title="podcasts" text="podcasts">
+            <outline text="Drabblecast" title="Drabblecast" type="rss"
+                xmlUrl="http://feeds.feedburner.com/TheDrabblecast" htmlUrl="http://www.drabblecast.org"/>
+            <outline text="Escape Pod" title="Escape Pod" type="rss"
+                xmlUrl="http://feeds.escapepod.org/EscapePod" htmlUrl="http://escapepod.org"/>
+            <outline text="Filmspotting" title="Filmspotting" type="rss"
+                xmlUrl="http://feeds.feedburner.com/cinecast" htmlUrl="http://filmspotting.net"/>
+        </outline>
+        <outline title="perl" text="perl">
+           <outline text="Perlbuzz" title="Perlbuzz" type="rss"
+                xmlUrl="http://feeds.feedburner.com/PerlBuzz" htmlUrl="http://perlbuzz.com/"/>
+        </outline>
+        <outline title="comics" text="comics">
+            <outline text="Oglaf! -- Comics. Often dirty."
+                title="Oglaf! -- Comics. Often dirty." type="rss"
+                xmlUrl="http://oglaf.com/feeds/rss/" htmlUrl="http://oglaf.com/latest/"/>
+            <outline text="Romantically Apocalyptic"
+                title="Romantically Apocalyptic" type="rss"
+                xmlUrl="http://www.romanticallyapocalyptic.com/feeds/comic/rss.xml" htmlUrl="http://romanticallyapocalyptic.com"/>
+            <outline
+                text="Saturday Morning Breakfast Cereal (updated daily)"
+                title="Saturday Morning Breakfast Cereal (updated daily)"
+                type="rss" xmlUrl="http://www.smbc-comics.com/rss.php" htmlUrl="http://www.smbc-comics.com"/>
+            <outline text="xkcd.com" title="xkcd.com" type="rss"
+                xmlUrl="http://www.xkcd.com/rss.xml" htmlUrl="http://xkcd.com/"/>
+        </outline>
+    </body>
+</opml>

@@ -95,6 +95,7 @@ sub add_subscription {
     $self->render(text => 'I require a url');
   }
   else {
+    my $xmlUrl;
     $self->render_later();
     my $delay = Mojo::IOLoop->delay(
       sub {
@@ -102,34 +103,40 @@ sub add_subscription {
       },
       sub {
         my ($delay, $info, @feeds) = @_;
-        $self->render(text => "No feeds found for $url :("
+        return $delay->pass("No feeds found for $url :("
             . (($info->{error}) ? $info->{error} : ''))
-          && return
           unless (@feeds > 0);
         # TODO add support for multiple feeds later ...
         print STDERR ("Found feed: " . $feeds[0]);
-        $delay->pass(@feeds);
+        $delay->data(xmlUrl => $feeds[0]);
+        $delay->pass($info, @feeds);
      },
      sub {
-        my ($delay, $xmlUrl) = @_;
-        $self->app->backend->queue->get($xmlUrl, $delay->begin);
+        my ($delay, $info, $xmlUrl) = @_;
+        return $delay->pass($info) unless ($xmlUrl);
+        print STDERR "Gonna get $xmlUrl";
+        $self->app->backend->queue->get($xmlUrl, $delay->begin(0));
         $self->app->backend->queue->process();
      },
      sub {
         my ($delay, $ua, $tx) = @_;
+        return $delay->pass("Fail: $ua") unless ($tx);
         my ($feed, $info) = $self->process_feed($tx);
         if (!$feed) {
-           print STDERR ( "Problem parsing feed:",
+           return $delay->pass( "Problem parsing feed:",
               (($info->{error}) ? "Error " . $info->{error} : ''));
         }
         else {
-            my $sub = { xmlUrl => $url, %$info };
-              $self->backend->update_feed($sub, $feed, $delay->begin); # also does save_subscription
+            print STDERR "Got a feed! " . $self->dumper($feed) . "Info: %{$info}";
+            my $sub = { xmlUrl => $delay->data('xmlUrl'), %$info };
+              $self->backend->update_feed($sub, $feed, $delay->begin(0)); # also does save_subscription
         }
      },
      sub {
-            my ($delay, $xmlUrl) = @_;
-           my $dest = $self->url_for('/view/feed')->query({src => $xmlUrl});
+           my ($delay, $errors) = @_;
+           return $self->render(text => $errors) if ($errors);
+           my $dest = $self->url_for('/view/feed')->query({src => $delay->data('xmlUrl')});
+           print STDERR "Going to redirect to $dest...";
            $self->redirect_to($dest);
      } );
   }

@@ -112,8 +112,8 @@ sub update_feed {
     }
   }
   my $delay = Mojo::IOLoop->delay();
-  $delay->on(finish => sub { $self->save_subscription($sub, $cb) });
-  $delay->on('error' => sub { die "Error in update_feed:", @_; });
+  $delay->on(finish => sub { shift; die "Error in update feed: ", @_ if (@_); $self->save_subscription($sub, $cb) });
+  $delay->on('error' => sub { shift; die "Error in update_feed:", @_; });
   foreach my $item (@{$feed->{'items'}}) {
     my $end = $delay->begin(0);
     $item->{'origin'} = $sub->{xmlUrl};    # save our source feed...
@@ -123,7 +123,6 @@ sub update_feed {
       $self->unshorten_url(
         $item->{'link'},
         sub {
-          $end->();
           $item->{'link'} = $self->cleanup_feedproxy($_[0]);
           $self->store_feed_item($item, $end);
         }
@@ -142,8 +141,7 @@ sub store_feed_item {
   my ($link, $title, $content) = map { $item->{$_} } (qw(link title content));
   unless ($link) {
     my $identifier = substr($title . $content . $item->{'_raw'}, 0, 40);
-    $self->log->info("No link for item $identifier");
-    return $cb->();
+    return $cb->("No link for item $identifier");
   }
   else {
     $self->log->info("Saving item with $link - $title");
@@ -153,11 +151,10 @@ sub store_feed_item {
       next unless ($item->{$_});
       $item->{$_} = bson_time $item->{$_} * 1000;
     }
-    $self->items->update({link => $link}, $item, {upsert => 1}, 
+    $self->items->update({link => $link}, $item, {upsert => 1},
       sub {
         my ($doc, $err) = @_;
-        die "Error in updating item: $err" if ($err);
-        $cb->();
+        return $cb->("Error in updating item: $err") if ($err);
       }
     );
   }
