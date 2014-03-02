@@ -91,45 +91,47 @@ sub fetch_subscriptions {
 sub add_subscription {
   my $self = shift;
   my ($url) = $self->param('url');
-  if ($url) {
-#    $self->render_later();
-    $self->find_feeds(
-      $url,
+  unless ($url) {
+    $self->render(text => 'I require a url');
+  }
+  else {
+    $self->render_later();
+    my $delay = Mojo::IOLoop->delay(
       sub {
-        #print STDERR ($self->app->dumper($_)) for (@_);
-        my ($c, $info, @feeds) = @_;
+        $self->find_feeds( $url, shift->begin() );
+      },
+      sub {
+        my ($delay, $info, @feeds) = @_;
         $self->render(text => "No feeds found for $url :("
             . (($info->{error}) ? $info->{error} : ''))
           && return
           unless (@feeds > 0);
-        my $xmlUrl = shift @feeds;
         # TODO add support for multiple feeds later ...
-        print STDERR ("Found feed: $xmlUrl");
-        $self->app->process_feeds(
-          [{ xmlUrl => $xmlUrl }],
-          sub {
-            my ($ca, $sub, $feed, $inf) = @_;
-            if (!$feed) {
-              print STDERR ( "Problem parsing feed:",
-                (($info->{error}) ? "Error " . $info->{error} : ''));
-            }
-            else {
-              $self->backend->update_feed($sub, $feed, sub {
-                $self->backend->save_subscription($sub,
-                  sub {
-                    my $dest
-                      = $self->url_for('/view/feed')->query({src => $xmlUrl});
-                    $self->redirect_to($dest);
-                  }) 
-              } );
-            }
-          }
-        );
-      }
-    );
-  }
-  else {
-    $self->render(text => 'I require a url');
+        print STDERR ("Found feed: " . $feeds[0]);
+        $delay->pass(@feeds);
+     },
+     sub {
+        my ($delay, $xmlUrl) = @_;
+        $self->app->backend->queue->get($xmlUrl, $delay->begin);
+        $self->app->backend->queue->process();
+     },
+     sub {
+        my ($delay, $ua, $tx) = @_;
+        my ($feed, $info) = $self->process_feed($tx);
+        if (!$feed) {
+           print STDERR ( "Problem parsing feed:",
+              (($info->{error}) ? "Error " . $info->{error} : ''));
+        }
+        else {
+            my $sub = { xmlUrl => $url, %$info };
+              $self->backend->update_feed($sub, $feed, $delay->begin); # also does save_subscription
+        }
+     },
+     sub {
+            my ($delay, $xmlUrl) = @_;
+           my $dest = $self->url_for('/view/feed')->query({src => $xmlUrl});
+           $self->redirect_to($dest);
+     } );
   }
 }
 

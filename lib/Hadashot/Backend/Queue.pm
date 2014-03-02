@@ -16,7 +16,7 @@ has delay => sub {
     }
   );
 };
-has ua => sub { Mojo::UserAgent->new() };
+has ua => sub { Mojo::UserAgent->new()->max_redirects(5)->connect_timeout(30) };
 
 sub pending {
   my $self = shift;
