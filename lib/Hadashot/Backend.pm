@@ -270,37 +270,32 @@ sub fetch_subscriptions {
         $sub->{xmlUrl}, $self->feed_reader->set_req_headers($sub),
         sub {
           my ($ua, $tx) = @_;
-          $self->feed_reader->process_feed(
-            $sub, $tx,
-            sub {
-              my ($c, $sub, $feed, $info) = @_;
-              if (!$feed) {
-                my $err = $info->{'error'};
-                unless ($err) {
-                  print STDERR "No feed and no error message, ",
-                    $self->app->dumper($info);
-                }
-                $self->log->warn("Problem getting feed:", $sub->{xmlUrl}, $err);
-                if ($err eq 'url no longer points to a feed'
-                    || $err eq 'Not Found' ) {
-                  $self->feeds->remove({xmlUrl => $sub->{xmlUrl}}, $cb->($sub->{xmlUrl}));
-                }
-                elsif ($err eq 'Not Modified') {
-                  return;
-                }
-                else {
-                  $sub->{active} = 0;
-                  $sub->{error} = $err;
-                  $self->save_subscription($sub, $cb->($sub->{xmlUrl}));
-               }
-              }
-              else {
-                $sub->{active} = 1;
-                $self->update_feed( $sub, $feed,$cb->($sub->{xmlUrl}) );
-              }
+          my ($feed, $info) = $self->feed_reader->process_feed($tx);
+          if (!$feed) {
+             my $err = $info->{'error'};
+             unless ($err) {
+               print STDERR "No feed and no error message, ",
+                   $self->app->dumper($info);
+             }
+            $self->log->warn("Problem getting feed:", $sub->{xmlUrl}, $err);
+            if ($err eq 'url no longer points to a feed'
+                  || $err eq 'Not Found' ) {
+               $self->feeds->remove({xmlUrl => $sub->{xmlUrl}}, $cb->($sub->{xmlUrl}));
             }
-          );
+            elsif ($err eq 'Not Modified') {
+               return;
+            }
+            else {
+               $sub->{active} = 0;
+               $sub->{error} = $err;
+               $self->save_subscription($sub, $cb->($sub->{xmlUrl}));
+            }
           }
+          else {
+               $sub->{active} = 1;
+               $self->update_feed( $sub, $feed,$cb->($sub->{xmlUrl}) );
+          }
+        }
     );
   };
   $self->queue->process();
