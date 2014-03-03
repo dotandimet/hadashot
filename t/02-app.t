@@ -3,7 +3,7 @@ use Mojo::Base -strict;
 use Test::More;
 use Test::Mojo;
 use Mojo::URL;
-use Mojo::Util qw(slurp);
+use Mojo::Util qw(slurp dumper);
 use FindBin;
 
 use Hadashot::Backend;
@@ -23,13 +23,15 @@ $t->app->config({
 
 push @{$t->app->static->paths}, File::Spec->catdir($FindBin::Bin, 'samples');
 
+$t->app->log->path(undef); # log to STDERR?
 $t->app->backend->setup();
 $t->app->backend->reset();
 
+# Add Subscription:
 $t->post_ok('/settings/add_subscription', form => {
   url => '/atom.xml'
-})->status_is(200) # actually, it should be a redirect
-  ->content_like(qr/blah/, 'what did we get?');
+})->status_is(302) # actually, it should be a redirect
+  ->header_like(Location => qr{/view/feed\?src=http.*/atom\.xml});
 
 done_testing();
 

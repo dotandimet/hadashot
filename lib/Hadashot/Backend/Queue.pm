@@ -44,9 +44,8 @@ sub enqueue {
     die "enqueue requires a callback (cb key) in the hashref argument" unless ($job->{'cb'} && ref $job->{'cb'} eq 'CODE');
   # other valid keys: headers, data, method
   push @{$self->jobs}, $job;
-  return $self->pending;
   }
-  return;
+  return $self; # make chainable?
 }
 
 sub dequeue {

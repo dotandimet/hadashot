@@ -78,18 +78,19 @@ sub parse_opml {
 
 sub save_subscription {
   my ($self, $sub, $cb) = @_;
-  my $delay;
   unless ($cb && ref $cb eq 'CODE') {
-    $delay = Mojo::IOLoop->delay(sub { shift; my ($err) = @_; die "Error $err" if ($err); });
+    my $delay = Mojo::IOLoop->delay(sub { my ($err) = @_; die "Error $err" if ($err); print STDERR "Saved " . $sub->{xmlUrl};});
     $cb = $delay->begin;
   };
   $self->feeds->update(
     {xmlUrl => $sub->{xmlUrl}},
     { '$set' => $sub },
     { upsert => bson_true },
-    $cb
+    sub {
+      my ($col, $err, $doc) = @_;
+      $cb->( ($err) ? $err : undef ); # notify caller of errors
+   }
   );
-  $delay->wait if ($delay && ! Mojo::IOLoop->is_running);
 }
 
 sub get_direction {
@@ -111,33 +112,50 @@ sub update_feed {
       $sub->{$field} = $feed->{$field};
     }
   }
-  print STDERR "Sub is now: " . dumper($sub);
-  my $delay = Mojo::IOLoop->delay(sub {
-    my ($delay, @args) = @_;
-    print STDERR "End of update_feed";
-    die "Errors: ", @args if (@args);
-    $self->save_subscription($sub, $delay->begin);
-  });
-  $delay->on('error' => sub { print STDERR shift; die "Error in update_feed:", @_; });
-  foreach my $item (@{$feed->{'items'}}) {
-    $item->{'origin'} = $sub->{xmlUrl};    # save our source feed...
+  my $delay = Mojo::IOLoop->delay(
+    sub {
+      my ($delay, @args) = @_;
+      foreach my $item (@{$feed->{'items'}}) {
+        $item->{'origin'} = $sub->{xmlUrl};    # save our source feed...
          # fix relative links - because Sam Ruby is a wise-ass
-    $item->{'link'} = Mojo::URL->new($item->{'link'})->to_abs($item->{'origin'})->to_string;
-    if ($item->{'link'} =~ m/feedproxy/) {    # cleanup feedproxy links
-      $self->unshorten_url(
-        $item->{'link'},
-        sub {
-          $item->{'link'} = $self->cleanup_feedproxy($_[0]);
+        $item->{'link'} = Mojo::URL->new($item->{'link'})->to_abs($item->{'origin'})->to_string;
+        $self->cleanup_item_link($item, $delay->begin(0));
+      }
+   },
+   sub {
+          my ($delay, $item) = (shift, shift);
           $self->store_feed_item($item, $delay->begin(0));
-        }
-      );
-    }
-    else {
-      $self->store_feed_item($item, $delay->begin(0));
-    }
+    },
+   sub {
+      my ($delay, @args) = @_;
+      unless ($delay->data('saved')) {
+        $delay->data('saved' => $sub->{xmlUrl});
+        $self->save_subscription($sub, $delay->begin(0));
+      }
+   },
+  sub {
+    my ($delay, @args) = @_;
+    return $cb->(@args);
   }
-  $delay->wait unless (Mojo::IOLoop->is_running);
+  );
+  $delay->on('error' => sub { print STDERR "Error in update_feed:", @_; });
+#  $delay->wait unless (Mojo::IOLoop->is_running);
+}
 
+sub cleanup_item_link {
+  my ($self, $item, $cb) = @_;
+  my $delay = Mojo::IOLoop->delay(
+    sub {
+      my ($delay, @args) = @_;
+      return $delay->pass($item->{'link'}) if ($item->{'link'} !~ m/feedproxy/);
+      $self->unshorten_url( $item->{'link'}, $delay->begin(0) );
+    },
+    sub {
+      my ($delay, $link) = @_;
+      $item->{'link'} = $self->cleanup_feedproxy($link);
+      $cb->($item);
+   }
+  );
 }
 
 sub store_feed_item {
@@ -158,7 +176,7 @@ sub store_feed_item {
     $self->items->update({link => $link}, $item, {upsert => 1},
       sub {
         my ($coll, $err, $doc) = @_;
-        return $cb->("Error in updating item: $err") if ($err);
+        return $cb->(($err) ? "Error in updating item: $err" : undef);
       }
     );
   }
@@ -239,10 +257,11 @@ sub unshorten_url {
 
 sub cleanup_feedproxy {
   my ($self, $url) = @_;
+  $url = Mojo::URL->new($url);
   for (qw(utm_source utm_medium utm_campaign)) {
     $url->query->remove($_);
   }
-  return $url;
+  return $url->to_string();
 }
 
 sub handle_feed_update {
