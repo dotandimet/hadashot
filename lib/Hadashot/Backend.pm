@@ -301,18 +301,23 @@ sub handle_feed_update {
 sub fetch_subscriptions {
     my ( $self, @feeds ) = @_;
     my $query;
-    if (@feeds == 0) { # no feeds specified, fetch "active":
-      $query = { "active" => 1 };
-    }
-    elsif (@feeds == 1 && $feeds[0] == 1) {
+    if (@feeds == 0) { # no feeds specified, fetch all:
       $query = ();
+    }
+    elsif (defined $feeds[0] && $feeds[0] == 1) {
+      $query = { "active" => 1 };
     }
     else {
       $query = {xmlUrl => {'$in' => \@feeds}};
     }
     my $delay = Mojo::IOLoop->delay(
       sub {
-        my ($d, $cur, $err, $subs) = @_;
+        my ($delay) = shift;
+        $self->feeds->find($query)->all( $delay->begin(0) );
+      },
+      sub {
+        my ($delay, $cur, $err, $subs) = @_;
+        $delay->pass($err) if ($err);
         foreach my $sub (@$subs) {
           $self->queue->get(
             $sub->{xmlUrl},
@@ -325,8 +330,13 @@ sub fetch_subscriptions {
           );
         };
         $self->queue->process();
+    },
+    sub {
+      my ($delay, $err) = @_;
+      print STDERR "fetch_subscriptions failed: $err" if ($err);
+      return;
     });
-    $self->feeds->find($query)->all( $delay->begin );
+    $delay->wait unless Mojo::IOLoop->is_running;
 }
 
 1;

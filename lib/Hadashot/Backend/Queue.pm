@@ -12,6 +12,7 @@ has delay => sub {
   my $self = shift;
   Mojo::IOLoop->delay(
     sub {
+      my ($delay, @args) = @_;
       warn "There are still waiting jobs!" if ($self->pending > 0);
     }
   );

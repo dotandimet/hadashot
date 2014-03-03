@@ -23,7 +23,7 @@ sub run {
     'dump'  => \my $dump;
   if ($fetch) {
     $active ||= undef;
-    $self->app->fetch_subscriptions($active);
+    $self->app->fetch_subscriptions(($active) ? 1 : ());
   }
   else {
   my $opml_file = shift @args;
