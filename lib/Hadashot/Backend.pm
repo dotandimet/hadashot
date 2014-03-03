@@ -3,7 +3,7 @@ use v5.016;
 use Mojo::Base -base;
 use Mojo::DOM;
 use Mojo::JSON;
-use Mojo::Util qw(decode slurp trim);
+use Mojo::Util qw(decode slurp trim dumper);
 use Mojo::IOLoop;
 use Mango;
 use Mango::BSON qw(bson_time bson_true);
@@ -80,7 +80,7 @@ sub save_subscription {
   my ($self, $sub, $cb) = @_;
   my $delay;
   unless ($cb && ref $cb eq 'CODE') {
-    $delay = Mojo::IOLoop->delay(sub { return @_ });
+    $delay = Mojo::IOLoop->delay(sub { shift; my ($err) = @_; die "Error $err" if ($err); });
     $cb = $delay->begin;
   };
   $self->feeds->update(
@@ -111,11 +111,15 @@ sub update_feed {
       $sub->{$field} = $feed->{$field};
     }
   }
-  my $delay = Mojo::IOLoop->delay();
-  $delay->on(finish => sub { shift; die "Error in update feed: ", @_ if (@_); $self->save_subscription($sub, $cb) });
-  $delay->on('error' => sub { shift; die "Error in update_feed:", @_; });
+  print STDERR "Sub is now: " . dumper($sub);
+  my $delay = Mojo::IOLoop->delay(sub {
+    my ($delay, @args) = @_;
+    print STDERR "End of update_feed";
+    die "Errors: ", @args if (@args);
+    $self->save_subscription($sub, $delay->begin);
+  });
+  $delay->on('error' => sub { print STDERR shift; die "Error in update_feed:", @_; });
   foreach my $item (@{$feed->{'items'}}) {
-    my $end = $delay->begin(0);
     $item->{'origin'} = $sub->{xmlUrl};    # save our source feed...
          # fix relative links - because Sam Ruby is a wise-ass
     $item->{'link'} = Mojo::URL->new($item->{'link'})->to_abs($item->{'origin'})->to_string;
@@ -124,12 +128,12 @@ sub update_feed {
         $item->{'link'},
         sub {
           $item->{'link'} = $self->cleanup_feedproxy($_[0]);
-          $self->store_feed_item($item, $end);
+          $self->store_feed_item($item, $delay->begin(0));
         }
       );
     }
     else {
-      $self->store_feed_item($item, $end);
+      $self->store_feed_item($item, $delay->begin(0));
     }
   }
   $delay->wait unless (Mojo::IOLoop->is_running);
@@ -153,7 +157,7 @@ sub store_feed_item {
     }
     $self->items->update({link => $link}, $item, {upsert => 1},
       sub {
-        my ($doc, $err) = @_;
+        my ($coll, $err, $doc) = @_;
         return $cb->("Error in updating item: $err") if ($err);
       }
     );
@@ -243,12 +247,12 @@ sub cleanup_feedproxy {
 
 sub handle_feed_update {
   my ($self, $sub, $feed, $info) = @_;
-  my $delay = Mojo::IOLoop->delay(sub { $self->log->info("handle feed update finish " . $self->app->dumper(\@_)); });
+  my $delay = Mojo::IOLoop->delay(sub { $self->log->info("handle feed update finish " . dumper(\@_)); });
   if ( !$feed ) {
     my $err = $info->{'error'};
     unless ($err) {
       print STDERR "No feed and no error message, ",
-            $self->app->dumper($info);
+            dumper($info);
     }
     $self->log->warn( "Problem getting feed:",
         $sub->{xmlUrl}, $err );

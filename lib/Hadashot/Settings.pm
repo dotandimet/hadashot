@@ -109,6 +109,7 @@ sub add_subscription {
         # TODO add support for multiple feeds later ...
         print STDERR ("Found feed: " . $feeds[0]);
         $delay->data(xmlUrl => $feeds[0]);
+        print STDERR "data is " . $delay->data('xmlUrl');
         $delay->pass($info, @feeds);
      },
      sub {
@@ -127,13 +128,15 @@ sub add_subscription {
               (($info->{error}) ? "Error " . $info->{error} : ''));
         }
         else {
-            print STDERR "Got a feed! " . $self->dumper($feed) . "Info: %{$info}";
-            my $sub = { xmlUrl => $delay->data('xmlUrl'), %$info };
+            print STDERR "Got a feed! " . $self->dumper($feed) . "Info: " . $self->dumper($info);
+            my $sub = { xmlUrl => '' . $delay->data('xmlUrl'), %$info };
+            print STDERR "Sub is: " . $self->dumper($sub);
               $self->backend->update_feed($sub, $feed, $delay->begin(0)); # also does save_subscription
         }
      },
      sub {
            my ($delay, $errors) = @_;
+           print STDERR "This is the end, did we get here?";
            return $self->render(text => $errors) if ($errors);
            my $dest = $self->url_for('/view/feed')->query({src => $delay->data('xmlUrl')});
            print STDERR "Going to redirect to $dest...";
