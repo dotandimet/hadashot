@@ -33,5 +33,10 @@ $t->post_ok('/settings/add_subscription', form => {
 })->status_is(302) # actually, it should be a redirect
   ->header_like(Location => qr{/view/feed\?src=http.*/atom\.xml});
 
+# Add remote URL:
+$t->post_ok('/settings/add_subscription', form => {
+  url => 'http://corky.net'
+})->status_is(302) # actually, it should be a redirect
+  ->header_like(Location => qr{/view/feed\?src=http.*corky.*});
 done_testing();
 
