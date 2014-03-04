@@ -7,16 +7,7 @@ use Mojo::Util 'monkey_patch';
 has max => sub { $_[0]->ua->max_connections || 4 };
 has active => sub { 0 };
 has jobs => sub { [] };
-
-has delay => sub {
-  my $self = shift;
-  Mojo::IOLoop->delay(
-    sub {
-      my ($delay, @args) = @_;
-      warn "There are still waiting jobs!" if ($self->pending > 0);
-    }
-  );
-};
+has delay => sub { undef };
 has ua => sub { Mojo::UserAgent->new()->max_redirects(5)->connect_timeout(30) };
 
 sub pending {
@@ -56,30 +47,34 @@ sub dequeue {
 }
 
 sub process {
-  my ($self, $final_cb) = @_;
+  my ($self, $func) = @_;
+  unless ($self->delay) {
+    $self->delay( Mojo::IOLoop->delay(
+    (defined $func && ref $func eq 'CODE')
+    ? sub { my $delay = shift; $self->delay(undef); $func->(@_); }
+    : sub { my $delay = shift; warn "There are still pending jobs!" if ($self->pending); $self->delay(undef); }
+    ) );
+  }
+  else {
+    # func is just a counter decrement, call it.
+    $func->() if (defined $func && ref $func eq 'CODE');
+  }
   # we have jobs and can run them:
   while ($self->active < $self->max and my $job = $self->dequeue) {
       my ($url, $headers, $cb, $data, $method) = map { $job->{$_} } (qw(url headers cb data method));
       $method ||= 'get';
       $self->active($self->active+1);
-      my $end = $self->delay->begin();
+      my $end = $self->delay->begin(0);
       $self->ua->$method($url => $headers => sub {
         my ($ua, $tx) = @_;
-        $end->();
         $self->active($self->active-1);
         print STDERR "handled " . $tx->req->url,
                      , " active is now ", $self->active, ", pending is ", $self->pending , "\n";
         $cb->($ua, $tx, $data, $self);
-        $self->process();
+        $self->process($end);
       });
   }
-  if ($final_cb && ref $final_cb eq 'CODE') {
-    $self->delay->once(finish => sub {
-        my ($delay) = shift;
-        $final_cb->(@_);
-    });
-  }
-  $self->delay->wait unless(Mojo::IOLoop->is_running);
+  $$self->delay->wait unless(Mojo::IOLoop->is_running);
 }
 
 1;

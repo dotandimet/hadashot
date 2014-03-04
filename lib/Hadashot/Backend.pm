@@ -88,6 +88,7 @@ sub save_subscription {
     });
     $cb = $delay->begin(0);
   };
+  delete $sub->{_id}; # because Mod on _id not allowed
   $self->feeds->update(
     {xmlUrl => $sub->{xmlUrl}},
     { '$set' => $sub },
@@ -95,6 +96,7 @@ sub save_subscription {
     sub {
       my ($col, $err, $doc) = @_;
       $cb->( ($err) ? $err : undef ); # notify caller of errors
+      print STDERR "updated sub - $err " . dumper($doc);
    }
   );
   $delay->wait if (defined $delay && ! Mojo::IOLoop->is_running);
@@ -130,9 +132,11 @@ sub update_feed {
       }
    },
    sub {
-          my ($delay, $item) = (shift, shift);
-          print STDERR "Storing item... " . $item->{'link'} . '-' . $item->{'title'};
-          $self->store_feed_item($item, $delay->begin(0));
+          my ($delay, @items) = (@_);
+          foreach my $item (@items) {
+            print STDERR "Storing item... " . $item->{'link'} . '-' . $item->{'title'};
+            $self->store_feed_item($item, $delay->begin(0));
+          }
     },
    sub {
       my ($delay, @args) = @_;
@@ -231,7 +235,7 @@ sub sanitize_item {
       my $dom = $self->dom->parse($item->{$field});
       $dom->find('script,base,font')
         ->each(sub { (lc($_->type) eq 'font') ? $_->strip() : $_->remove(); });
-      $item->{$field} = $dom->to_xml;
+      $item->{$field} = $dom->to_string;
     }
   }
 }
@@ -274,8 +278,13 @@ sub cleanup_feedproxy {
 }
 
 sub handle_feed_update {
-  my ($self, $sub, $feed, $info) = @_;
-  my $delay = Mojo::IOLoop->delay(sub { shift; $self->log->info("handle feed update finish " . dumper(\@_)); });
+  my ($self, $sub, $feed, $info, $cb) = @_;
+  my $delay = Mojo::IOLoop->delay(
+    sub { 
+      my ($delay, @args) = @_;
+      $self->log->info("handle feed update finish " . dumper(\@args));
+      $cb->(@args);
+  });
   if ( !$feed ) {
     my $err = $info->{'error'};
     unless ($err) {
@@ -289,11 +298,14 @@ sub handle_feed_update {
     {
       $self->feeds->remove(
           { xmlUrl => $sub->{xmlUrl} },
-            $delay->begin
+          sub {
+            my ($c, $err, $doc) = @_;
+            $delay->pass(($err) ? $err : ());
+            }
           );
     }
     elsif ( $err eq 'Not Modified' ) {
-      return;
+      $delay->pass();
     }
     else {
       $sub->{active} = 0;
@@ -328,9 +340,7 @@ sub fetch_subscriptions {
         my ($delay, $cur, $err, $subs) = @_;
         $delay->pass($err) if ($err);
         print STDERR "Will check " . scalar @$subs . " feeds";
-        $delay->data('pending' => scalar @$subs);
         foreach my $sub (@$subs) {
-          print STDERR "\nqueuing " . $sub->{xmlUrl};
           my $end = $delay->begin(0);
           $self->queue->get(
             $sub->{xmlUrl},
@@ -338,8 +348,7 @@ sub fetch_subscriptions {
             sub {
                 my ( $ua,   $tx )   = @_;
                 my ( $feed, $info ) = $self->feed_reader->process_feed($tx);
-                $self->handle_feed_update($sub, $feed, $info);
-                $end->();
+                $self->handle_feed_update($sub, $feed, $info, $end->());
             }
           );
         };
