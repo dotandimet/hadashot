@@ -78,9 +78,15 @@ sub parse_opml {
 
 sub save_subscription {
   my ($self, $sub, $cb) = @_;
+  my $delay;
   unless ($cb && ref $cb eq 'CODE') {
-    my $delay = Mojo::IOLoop->delay(sub { my ($err) = @_; die "Error $err" if ($err); print STDERR "Saved " . $sub->{xmlUrl};});
-    $cb = $delay->begin;
+    $delay = Mojo::IOLoop->delay(sub {
+       shift;
+       my ($err) = @_; 
+       die "Error $err" if ($err);
+       print STDERR "Saved " . $sub->{xmlUrl};
+    });
+    $cb = $delay->begin(0);
   };
   $self->feeds->update(
     {xmlUrl => $sub->{xmlUrl}},
@@ -91,6 +97,7 @@ sub save_subscription {
       $cb->( ($err) ? $err : undef ); # notify caller of errors
    }
   );
+  $delay->wait if (defined $delay && ! Mojo::IOLoop->is_running);
 }
 
 sub get_direction {
@@ -124,12 +131,14 @@ sub update_feed {
    },
    sub {
           my ($delay, $item) = (shift, shift);
+          print STDERR "Storing item... " . $item->{'link'} . '-' . $item->{'title'};
           $self->store_feed_item($item, $delay->begin(0));
     },
    sub {
       my ($delay, @args) = @_;
       unless ($delay->data('saved')) {
         $delay->data('saved' => $sub->{xmlUrl});
+        print STDERR "Saved update to subscription";
         $self->save_subscription($sub, $delay->begin(0));
       }
    },
@@ -266,7 +275,7 @@ sub cleanup_feedproxy {
 
 sub handle_feed_update {
   my ($self, $sub, $feed, $info) = @_;
-  my $delay = Mojo::IOLoop->delay(sub { $self->log->info("handle feed update finish " . dumper(\@_)); });
+  my $delay = Mojo::IOLoop->delay(sub { shift; $self->log->info("handle feed update finish " . dumper(\@_)); });
   if ( !$feed ) {
     my $err = $info->{'error'};
     unless ($err) {
@@ -318,7 +327,11 @@ sub fetch_subscriptions {
       sub {
         my ($delay, $cur, $err, $subs) = @_;
         $delay->pass($err) if ($err);
+        print STDERR "Will check " . scalar @$subs . " feeds";
+        $delay->data('pending' => scalar @$subs);
         foreach my $sub (@$subs) {
+          print STDERR "\nqueuing " . $sub->{xmlUrl};
+          my $end = $delay->begin(0);
           $self->queue->get(
             $sub->{xmlUrl},
             $self->feed_reader->set_req_headers($sub),
@@ -326,13 +339,15 @@ sub fetch_subscriptions {
                 my ( $ua,   $tx )   = @_;
                 my ( $feed, $info ) = $self->feed_reader->process_feed($tx);
                 $self->handle_feed_update($sub, $feed, $info);
+                $end->();
             }
           );
         };
-        $self->queue->process();
+        $self->queue->process($delay->begin(0));
     },
     sub {
       my ($delay, $err) = @_;
+      print STDERR "Final step in fetch_subscriptions - did we reach it?";
       print STDERR "fetch_subscriptions failed: $err" if ($err);
       return;
     });

@@ -45,6 +45,7 @@ sub enqueue {
     die "enqueue requires a callback (cb key) in the hashref argument" unless ($job->{'cb'} && ref $job->{'cb'} eq 'CODE');
   # other valid keys: headers, data, method
   push @{$self->jobs}, $job;
+  print STDERR "\nenqueued request for ", $job->{'url'}, "\n";
   }
   return $self; # make chainable?
 }
@@ -55,7 +56,7 @@ sub dequeue {
 }
 
 sub process {
-  my ($self) = @_;
+  my ($self, $final_cb) = @_;
   # we have jobs and can run them:
   while ($self->active < $self->max and my $job = $self->dequeue) {
       my ($url, $headers, $cb, $data, $method) = map { $job->{$_} } (qw(url headers cb data method));
@@ -66,10 +67,17 @@ sub process {
         my ($ua, $tx) = @_;
         $end->();
         $self->active($self->active-1);
-        say "Active is now ", $self->active, ", pending is ", $self->pending;
+        print STDERR "handled " . $tx->req->url,
+                     , " active is now ", $self->active, ", pending is ", $self->pending , "\n";
         $cb->($ua, $tx, $data, $self);
         $self->process();
       });
+  }
+  if ($final_cb && ref $final_cb eq 'CODE') {
+    $self->delay->once(finish => sub {
+        my ($delay) = shift;
+        $final_cb->(@_);
+    });
   }
   $self->delay->wait unless(Mojo::IOLoop->is_running);
 }

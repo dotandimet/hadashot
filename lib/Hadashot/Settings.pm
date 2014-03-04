@@ -4,18 +4,24 @@ use Mango::BSON qw(encode_int64);
 
 # This action will render a template
 
-sub import {
+sub import_opml {
   my $self = shift;
   my (@subs, @loaded, @exist);
   if (my $in_file = $self->param('infile')) {
     if ($self->param('type') eq 'OPML') {
       @subs = $self->backend->parse_opml($in_file->asset);
+      my $delay = Mojo::IOLoop->delay( sub {
+        my ($delay, $err) = @_;
+        print STDERR $err if ($err);
+      } );
+      $delay->on(finish => sub {
+        $self->redirect_to('settings/blogroll');
+      });
       for my $sub (@subs) {
-        $self->backend->save_subscription($sub);
+        $self->backend->save_subscription($sub, $delay->begin(0));
       }
     }
   }
-  $self->redirect_to('settings/blogroll');
 
 #    $self->render( subs => [@loaded, @exist] );
 }
