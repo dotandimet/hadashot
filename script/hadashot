@@ -9,6 +9,8 @@ BEGIN {
   if (-d "$FindBin::Bin/../../Mojolicious-Plugin-FeedReader/lib") {
     unshift @INC, "$FindBin::Bin/../../Mojolicious-Plugin-FeedReader/lib";
   }
+  binmode STDERR, ':utf8';
+  binmode STDOUT, ':utf8';
  }
 
 # Start command line interface for application
