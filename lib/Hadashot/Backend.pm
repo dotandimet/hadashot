@@ -95,11 +95,10 @@ sub save_subscription {
     { upsert => bson_true },
     sub {
       my ($col, $err, $doc) = @_;
-      $cb->( ($err) ? $err : undef ); # notify caller of errors
-      print STDERR "updated sub - $err " . dumper($doc);
+      #print STDERR "updated sub - " . $sub->{xmlUrl} . ' ' . (($err) ? $err : '') . ' ' . dumper($doc);
+      $cb->( (($err) ? $err : undef ) ); # notify caller of errors
    }
   );
-  $delay->wait if (defined $delay && ! Mojo::IOLoop->is_running);
 }
 
 sub get_direction {
@@ -305,17 +304,17 @@ sub handle_feed_update {
           );
     }
     elsif ( $err eq 'Not Modified' ) {
-      $delay->pass();
+      $delay->pass($err);
     }
     else {
       $sub->{active} = 0;
       $sub->{error}  = $err;
-      $self->save_subscription( $sub, $delay->begin );
+      $self->save_subscription( $sub, $delay->begin(0) );
     }
   }
   else {
     $sub->{active} = 1;
-    $self->update_feed( $sub, $feed, $delay->begin );
+    $self->update_feed( $sub, $feed, $delay->begin(0) );
   }
 }
 
@@ -348,7 +347,7 @@ sub fetch_subscriptions {
             sub {
                 my ( $ua,   $tx )   = @_;
                 my ( $feed, $info ) = $self->feed_reader->process_feed($tx);
-                $self->handle_feed_update($sub, $feed, $info, $end->());
+                $self->handle_feed_update($sub, $feed, $info, $end);
             }
           );
         };
