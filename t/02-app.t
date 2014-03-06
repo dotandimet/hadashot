@@ -1,5 +1,6 @@
 use Mojo::Base -strict;
 
+use utf8;
 use Test::More;
 use Test::Mojo;
 use Mojo::URL;
@@ -18,22 +19,33 @@ BEGIN {
 my $t = Test::Mojo->new('Hadashot');
 push @{$t->app->static->paths}, File::Spec->catdir($FindBin::Bin, 'samples');
 
-$t->app->log->path(undef); # log to STDERR?
+$t->app->log->path(undef);    # log to STDERR?
+print $t->app->config->{db_name}, " is the db\n";
 $t->app->backend->setup();
 $t->app->backend->reset();
 
 # Add Subscription:
-$t->post_ok('/settings/add_subscription', form => {
-  url => '/atom.xml'
-})->status_is(302) # actually, it should be a redirect
+$t->post_ok('/settings/add_subscription', form => {url => '/atom.xml'})
+  ->status_is(302)
   ->header_like(Location => qr{/view/feed\?src=http.*/atom\.xml});
 
 # Add remote URL:
-$t->post_ok('/settings/add_subscription', form => {
-  url => 'http://corky.net'
-})->status_is(302) # actually, it should be a redirect
+$t->post_ok('/settings/add_subscription', form => {url => 'http://corky.net'})
+  ->status_is(302)
   ->header_like(Location => qr{/view/feed\?src=http.*corky.*});
 
-$t->post_ok('/settings/import_opml', form => { infile => { file => File::Spec->catdir($FindBin::Bin, 'sample.opml') }, type => 'OPML' })->status_is(302)->header_like(Location => qr{/settings/blogroll});
+# Upload subscriptions from OPML file:
+$t->post_ok(
+  '/settings/import_opml',
+  form => {
+    infile => {file => File::Spec->catdir($FindBin::Bin, 'sample.opml')},
+    type   => 'OPML'
+  }
+)->status_is(302)->header_like(Location => qr{/settings/blogroll});
+
+$t->get_ok('/settings/blogroll', { js => 1 })
+  ->status_is(200)
+  ->json_is('/subs/1/title', 'קורקי.נט aggregator');
+
 done_testing();
 
