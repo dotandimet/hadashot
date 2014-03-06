@@ -8,19 +8,14 @@ use FindBin;
 
 use Hadashot::Backend;
 
+
+BEGIN {
+  $ENV{'MOJO_CONFIG'} = File::Spec->catdir($FindBin::Bin, 'test.conf');
+  binmode STDERR, ':utf8';
+  binmode STDOUT, ':utf8';
+}
+
 my $t = Test::Mojo->new('Hadashot');
-
-$t->app->config({
-      db_type      => 'mango',
-      db_connect   => 'mongodb://localhost:27017',
-      db_name      => 'hadashot_test_02',
-      db_feeds     => 'subs',
-      db_items     => 'items',
-      db_bookmarks => 'bookmarks',
-      db_raw_feeds => 'raw_feeds',
-      secret       => 'dsfsfw2dfAg5%gh'
-});
-
 push @{$t->app->static->paths}, File::Spec->catdir($FindBin::Bin, 'samples');
 
 $t->app->log->path(undef); # log to STDERR?
@@ -38,5 +33,7 @@ $t->post_ok('/settings/add_subscription', form => {
   url => 'http://corky.net'
 })->status_is(302) # actually, it should be a redirect
   ->header_like(Location => qr{/view/feed\?src=http.*corky.*});
+
+$t->post_ok('/settings/import_opml', form => { infile => { file => File::Spec->catdir($FindBin::Bin, 'sample.opml') }, type => 'OPML' })->status_is(302)->header_like(Location => qr{/settings/blogroll});
 done_testing();
 

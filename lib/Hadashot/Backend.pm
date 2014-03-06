@@ -127,7 +127,8 @@ sub update_feed {
         $item->{'origin'} = $sub->{xmlUrl};    # save our source feed...
          # fix relative links - because Sam Ruby is a wise-ass
         $item->{'link'} = Mojo::URL->new($item->{'link'})->to_abs($item->{'origin'})->to_string;
-        $self->cleanup_item_link($item, $delay->begin(0));
+        #$self->cleanup_item_link($item, $delay->begin(0));
+        $delay->pass($item);
       }
    },
    sub {
@@ -351,7 +352,7 @@ sub fetch_subscriptions {
             }
           );
         };
-        $self->queue->process($delay->begin(0));
+        $self->queue->process();
     },
     sub {
       my ($delay, $err) = @_;
