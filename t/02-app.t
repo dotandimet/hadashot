@@ -29,10 +29,16 @@ $t->post_ok('/settings/add_subscription', form => {url => '/atom.xml'})
   ->status_is(302)
   ->header_like(Location => qr{/view/feed\?src=http.*/atom\.xml});
 
+
 # Add remote URL:
 $t->post_ok('/settings/add_subscription', form => {url => 'http://corky.net'})
   ->status_is(302)
   ->header_like(Location => qr{/view/feed\?src=http.*corky.*});
+
+# Check blogroll:
+$t->get_ok('/settings/blogroll?js=1')
+  ->status_is(200)
+  ->json_is('/subs/0/title', 'קורקי.נט aggregator');
 
 # Upload subscriptions from OPML file:
 $t->post_ok(
@@ -43,9 +49,6 @@ $t->post_ok(
   }
 )->status_is(302)->header_like(Location => qr{/settings/blogroll});
 
-$t->get_ok('/settings/blogroll', { js => 1 })
-  ->status_is(200)
-  ->json_is('/subs/1/title', 'קורקי.נט aggregator');
 
 done_testing();
 
