@@ -133,7 +133,7 @@ sub add_subscription {
         }
         else { # got a feed
             my $sub = { xmlUrl => '' . $delay->data('xmlUrl'), %$info };
-            $self->backend->update_feed($sub, $feed, $delay->begin(0)); # also does save_subscription
+            $self->backend->handle_feed_update($sub, $feed, $info, $delay->begin(0)); # also does save_subscription
         }
      },
      sub {
