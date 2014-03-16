@@ -49,6 +49,13 @@ $t->post_ok(
   }
 )->status_is(302)->header_like(Location => qr{/settings/blogroll});
 
+# Check loading a feed and fetching items to display:
+$t->app->backend->fetch_subscriptions('http://oglaf.com/feeds/rss/'); # feed with no dates
+my $page_1 = Mojo::URL->new('/feed/river/')->query({js => 1, src => 'http://oglaf.com/feeds/rss/'});
+my $first = $t->get_ok($page_1)->status_is(200)->json_is('/total', '8')->tx->res->json->{items}[0];
+
+
+
 
 done_testing();
 

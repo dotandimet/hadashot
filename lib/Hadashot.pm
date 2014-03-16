@@ -2,6 +2,7 @@ package Hadashot;
 use Mojo::Base 'Mojolicious';
 use Hadashot::Backend;
 use List::Util qw(shuffle);
+use HTTP::Date;
 
 our $VERSION = '0.01';
 
@@ -40,7 +41,7 @@ sub startup {
     }
   );
 
-  $self->helper(todate => sub { Hadashot::Backend::time2str($_[1] / 1000); });
+  $self->helper(todate => sub { time2str($_[1] / 1000); });
 
   # Router
   my $r = $self->routes;

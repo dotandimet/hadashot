@@ -131,12 +131,23 @@ sub update_feed {
         $delay->pass($item);
       }
    },
-   sub {
-          my ($delay, @items) = (@_);
-          foreach my $item (@items) {
-            print STDERR "Storing item... " . $item->{'link'} . '-' . $item->{'title'};
-            $self->store_feed_item($item, $delay->begin(0));
+    sub {
+      my ($delay, @items) = (@_);
+      my $now = bson_time();
+      foreach my $item (@items) {
+        print STDERR "Storing item... " . $item->{'link'} . '-' . $item->{'title'};
+      # convert dates to Mongodb BSON ?
+        $now--; # decrement default "date" between items - because RSS is ordered from new to old.
+        for (qw(published updated)) {
+          if ($item->{$_}) {
+            $item->{$_} = bson_time $item->{$_} * 1000;
           }
+          else { # no date, so save when we stored it:
+            $item->{$_} = $now;
+          }
+        }
+        $self->store_feed_item($item, $delay->begin(0));
+      }
     },
    sub {
       my ($delay, @args) = @_;
@@ -181,11 +192,6 @@ sub store_feed_item {
   else {
     $self->log->info("Saving item with $link - $title");
 
-    # convert dates to Mongodb BSON ?
-    for (qw(published updated)) {
-      next unless ($item->{$_});
-      $item->{$_} = bson_time $item->{$_} * 1000;
-    }
     $self->items->update({link => $link}, $item, {upsert => 1},
       sub {
         my ($coll, $err, $doc) = @_;
@@ -325,7 +331,7 @@ sub fetch_subscriptions {
     if (@feeds == 0) { # no feeds specified, fetch all:
       $query = ();
     }
-    elsif (defined $feeds[0] && $feeds[0] == 1) {
+    elsif (defined $feeds[0] && $feeds[0] eq '1') {
       $query = { "active" => 1 };
     }
     else {
