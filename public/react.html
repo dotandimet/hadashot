@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>יש לנו חדשות בשבילכם</title>
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet"
+    href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet"
+    href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap-theme.min.css">
+
+
+  </head>
+  <body>
+<style type="text/css">
+#feeds {
+/*  overflow: auto;
+  position: relative;
+  height: 600px; */
+}
+.entry img, .entry iframe, .entry object {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+</style>
+<div class="container">
+  <div class="row">
+    <div id="sublist" class="col-md-3 list-group">
+      <p>It looks like you aren't subscribed to any feeds.</p>
+      <p>Use <b>Settings -> Import...</b> to load some.</p>
+    </div>
+    <div class="col-md-9">
+      <h2>Your Feed</h2>
+      <div id="feeds">
+      </div>
+      <ul class="pager">
+        <li id="before" class="previous"><a href="#">Earlier</a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+
+     <div id="main"></div>
+     <!-- jquery from CDN -->
+     <script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
+     <!-- bootstrap javascript -->
+    <script
+    src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+    <!-- react.js -->
+    <script src="//fb.me/react-with-addons-0.9.0.js"></script>
+    <script src="//fb.me/JSXTransformer-0.9.0.js"></script>
+<script type="text/jsx">
+/** @jsx React.DOM */
+
+var FeedItem = React.createClass({
+  render: function() {
+    return (
+      <div className="entry panel panel-default">
+      <div className="panel-heading">{this.props.heading}</div>
+      <div className="panel-body"> {this.props.body}</div>
+      </div>
+    );
+  }
+});
+
+// var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
+
+var TodoList = React.createClass({
+  getInitialState: function() {
+    return {items: [{ fid: 1, heading: 'hello', body: 'world'}, 
+                    { fid: 2, heading: 'click', body: 'me' }]};
+  },
+  handleAdd: function() {
+    var newItems =
+      this.state.items.concat([prompt('Enter some text')]);
+    this.setState({items: newItems});
+  },
+  handleRemove: function(i) {
+    var newItems = this.state.items;
+    newItems.splice(i, 1)
+    this.setState({items: newItems});
+  },
+  render: function() {
+    var items = this.state.items.map(function(item, i) {
+      return (
+        <FeedItem key={item.fid} heading={item.heading} body={item.body} 
+         onClick={this.handleRemove.bind(this, i)}
+        />
+      );
+    }.bind(this));
+    return (
+      <div>
+          {items}
+      </div>
+    );
+  }
+});
+
+</script>
+<script type="text/jsx">
+/** @jsx React.DOM */
+$(function() {
+React.renderComponent(
+    <TodoList />,
+    document.getElementById('feeds')
+    );
+    });
+</script>
+  </body>
+</html>
