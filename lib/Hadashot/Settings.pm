@@ -105,28 +105,27 @@ sub add_subscription {
     $self->render_later();
     my $delay = Mojo::IOLoop->delay(
       sub {
-        $self->find_feeds( $url, shift->begin() );
+        $self->find_feeds( $url, shift->begin(0) );
       },
       sub {
-        my ($delay, $info, @feeds) = @_;
-        return $delay->pass("No feeds found for $url :("
-            . (($info->{error}) ? $info->{error} : ''))
+        my ($delay, @feeds) = @_;
+        return $delay->pass("No feeds found for $url :(")
           unless (@feeds > 0);
         # TODO add support for multiple feeds later ...
         print STDERR ("Found feed: " . $feeds[0]);
         $delay->data(xmlUrl => $feeds[0]);
-        $delay->pass($info, @feeds);
+        $delay->pass(undef, @feeds);
      },
      sub {
-        my ($delay, $info, $xmlUrl) = @_;
-        return $delay->pass($info) unless ($xmlUrl);
-        $self->app->backend->queue->get($xmlUrl, $delay->begin(0));
-        $self->app->backend->queue->process();
+        my ($delay, $err, $xmlUrl) = @_;
+        return $delay->pass($err) unless ($xmlUrl);
+        $self->backend->queue->get($xmlUrl, $delay->begin(0));
+        $self->backend->queue->process();
      },
      sub {
         my ($delay, $ua, $tx) = @_;
         return $delay->pass("Fail: $ua") unless ($tx);
-        my ($feed, $info) = $self->process_feed($tx);
+        my ($feed, $info) = $self->backend->process_feed($tx);
         if (!$feed) {
            return $delay->pass( "Problem parsing feed:",
               (($info->{error}) ? "Error " . $info->{error} : ''));

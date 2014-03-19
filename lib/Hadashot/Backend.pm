@@ -135,9 +135,9 @@ sub update_feed {
       my ($delay, @items) = (@_);
       my $now = bson_time();
       foreach my $item (@items) {
-        print STDERR "Storing item... " . $item->{'link'} . '-' . $item->{'title'};
+        print STDERR "Storing item... " . $item->{'link'} . '-' . $item->{'title'} if ($ENV{'HADASHOT_DEBUG'});
       # convert dates to Mongodb BSON ?
-        $now--; # decrement default "date" between items - because RSS is ordered from new to old.
+        $now = ; # decrement default "date" between items - because RSS is ordered from new to old.
         for (qw(published updated)) {
           if ($item->{$_}) {
             $item->{$_} = bson_time $item->{$_} * 1000;
@@ -353,7 +353,7 @@ sub fetch_subscriptions {
             $self->feed_reader->set_req_headers($sub),
             sub {
                 my ( $ua,   $tx )   = @_;
-                my ( $feed, $info ) = $self->feed_reader->process_feed($tx);
+                my ( $feed, $info ) = $self->process_feed($tx);
                 $self->handle_feed_update($sub, $feed, $info, $end);
             }
           );
@@ -367,6 +367,58 @@ sub fetch_subscriptions {
       return;
     });
     $delay->wait unless Mojo::IOLoop->is_running;
+}
+
+sub process_feed {
+  my ($self, $tx) = @_;
+  my $req_info = $self->req_info($tx);
+  my $feed;
+  if (!defined $req_info->{error} && $req_info->{'code'} == 200) {
+    eval { $feed = $self->feed_reader->parse_rss($tx->res->dom); };
+    if ($@) { # assume no error from tx, because code is 200
+      $req_info->{'error'} = $@;
+    }
+    if (!$feed && !defined $req_info->{'error'}) {
+      $req_info->{'error'} = 'url no longer points to a feed';
+    }
+  }
+  return ($feed, $req_info);
+}
+
+sub req_info {
+  my ($tx) = pop;
+  my %info = (url => $tx->req->url);
+  if (my $res = $tx->success) {
+    $info{'code'} = $res->code;
+    if ($res->code == 200) {
+      my $headers = $res->headers;
+      my ($last_modified, $etag) = ($headers->last_modified, $headers->etag);
+      if ($last_modified) {
+        $info{last_modified} = $last_modified;
+      }
+      if ($etag) {
+        $info{etag} = $etag;
+      }
+    }
+    else {
+      $info{'error'} = $tx->res->message; # for not modified etc.
+    }
+  }
+  else {
+    my ($err, $code) = $tx->error;
+    $info{'code'} = $code if ($code);
+    $info{'error'} = $err;
+  }
+  return \%info;
+}
+
+# set request conditional headers from saved last_modified and etag headers
+sub set_req_headers {
+  my $h = pop;
+  my %headers;
+  $headers{'If-Modified-Since'} = $h->{last_modified} if ($h->{last_modified});
+  $headers{'If-None-Match'} = $h->{etag} if ($h->{etag});
+  return %headers;
 }
 
 1;
