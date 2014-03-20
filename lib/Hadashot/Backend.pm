@@ -84,7 +84,7 @@ sub save_subscription {
        shift;
        my ($err) = @_; 
        die "Error $err" if ($err);
-       print STDERR "Saved " . $sub->{xmlUrl};
+       print STDERR "Saved " . $sub->{xmlUrl} if ($ENV{HADASHOT_DEBUG});
     });
     $cb = $delay->begin(0);
   };
@@ -95,7 +95,7 @@ sub save_subscription {
     { upsert => bson_true },
     sub {
       my ($col, $err, $doc) = @_;
-      #print STDERR "updated sub - " . $sub->{xmlUrl} . ' ' . (($err) ? $err : '') . ' ' . dumper($doc);
+      print STDERR "updated sub - " . $sub->{xmlUrl} . ' ' . (($err) ? $err : '') . ' ' . dumper($doc) if ($ENV{HADASHOT_DEBUG});
       $cb->( (($err) ? $err : undef ) ); # notify caller of errors
    }
   );
@@ -137,7 +137,7 @@ sub update_feed {
       foreach my $item (@items) {
         print STDERR "Storing item... " . $item->{'link'} . '-' . $item->{'title'} if ($ENV{'HADASHOT_DEBUG'});
       # convert dates to Mongodb BSON ?
-        $now = ; # decrement default "date" between items - because RSS is ordered from new to old.
+        $now = $now - 2000; # decrement default "date" between items - because RSS is ordered from new to old.
         for (qw(published updated)) {
           if ($item->{$_}) {
             $item->{$_} = bson_time $item->{$_} * 1000;
@@ -153,7 +153,7 @@ sub update_feed {
       my ($delay, @args) = @_;
       unless ($delay->data('saved')) {
         $delay->data('saved' => $sub->{xmlUrl});
-        print STDERR "Saved update to subscription";
+        print STDERR "Saved update to subscription", $sub->{xmlUrl} if ($ENV{'HADASHOT_DEBUG'});
         $self->save_subscription($sub, $delay->begin(0));
       }
    },
@@ -345,7 +345,7 @@ sub fetch_subscriptions {
       sub {
         my ($delay, $cur, $err, $subs) = @_;
         $delay->pass($err) if ($err);
-        print STDERR "Will check " . scalar @$subs . " feeds";
+        print STDERR "Will check " . scalar @$subs . " feeds" if ($ENV{HADASHOT_DEBUG});
         foreach my $sub (@$subs) {
           my $end = $delay->begin(0);
           $self->queue->get(
@@ -362,7 +362,7 @@ sub fetch_subscriptions {
     },
     sub {
       my ($delay, $err) = @_;
-      print STDERR "Final step in fetch_subscriptions - did we reach it?";
+      print STDERR "Final step in fetch_subscriptions - did we reach it?" if ($ENV{HADASHOT_DEBUG});
       print STDERR "fetch_subscriptions failed: $err" if ($err);
       return;
     });
