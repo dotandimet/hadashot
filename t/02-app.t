@@ -24,10 +24,25 @@ print $t->app->config->{db_name}, " is the db\n";
 $t->app->backend->setup();
 $t->app->backend->reset();
 
+my $base = $t->app->ua->server->url; # this is the base URL my app sees.
+say("base url for app ua server is $base");
+my $face = $t->ua->server->url; # this is the base URL my tests see.
+say("base url for test ua server is $face");
+my $xml_url = $t->get_ok('/atom.xml')->status_is(200)->content_type_is('application/xml')->tx->req->url;
+say "Got atom.xml from $xml_url";
+
+# rewrite URL to how the app sees it
+$xml_url = $base->clone->path($xml_url->path);
+say "Set xml_url to $xml_url\n";
 # Add Subscription:
+my $add_sub_url = 
 $t->post_ok('/settings/add_subscription', form => {url => '/atom.xml'})
   ->status_is(302)
-  ->header_like(Location => qr{/view/feed\?src=http.*/atom\.xml});
+  ->header_like(Location => qr{/view/feed\?src=$xml_url})->tx->req->url;
+
+$t->get_ok('/settings/blogroll?js=1')->status_is(200)
+  ->content_type_is('application/json')->json_is('/subs/0/xmlUrl' => $xml_url)
+  ->json_is('/subs/0/title' => 'First Weblog');
 
 
 # Add remote URL:
@@ -38,6 +53,7 @@ $t->post_ok('/settings/add_subscription', form => {url => 'http://corky.net'})
 # Check blogroll:
 $t->get_ok('/settings/blogroll?js=1')
   ->status_is(200)
+  ->content_type_is('application/json')
   ->json_is('/subs/0/title', 'קורקי.נט aggregator');
 
 # Upload subscriptions from OPML file:

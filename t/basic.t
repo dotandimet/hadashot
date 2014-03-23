@@ -23,10 +23,6 @@ $t->get_ok('/atom.xml')->status_is(200)->content_type_is('application/xml')
 $b->save_subscription({xmlUrl => '/atom.xml', title => 'first'});
 
 # fetch it:
-$t->get_ok('/settings/blogroll?js=1')->status_is(200)
-  ->content_type_is('application/json')->json_is('/subs/0/xmlUrl' => '/atom.xml')
-  ->json_is('/subs/0/title' => 'first');
-
 # parse and load a feed:
 my $delay = Mojo::IOLoop->delay;
 $delay->on(error => sub { die "Horrors: ", @_, "\n"; });

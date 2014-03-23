@@ -36,7 +36,7 @@ sub enqueue {
     die "enqueue requires a callback (cb key) in the hashref argument" unless ($job->{'cb'} && ref $job->{'cb'} eq 'CODE');
   # other valid keys: headers, data, method
   push @{$self->jobs}, $job;
-  print STDERR "\nenqueued request for ", $job->{'url'}, "\n";
+  print STDERR "\nenqueued request for ", $job->{'url'}, "\n" if ($ENV{HADASHOT_DEBUG});
   }
   return $self; # make chainable?
 }
@@ -69,7 +69,8 @@ sub process {
         my ($ua, $tx) = @_;
         $self->active($self->active-1);
         print STDERR "handled " . $tx->req->url,
-                     , " active is now ", $self->active, ", pending is ", $self->pending , "\n";
+                     , " active is now ", $self->active, ", pending is ", $self->pending , "\n"
+                     if ($ENV{HADASHOT_DEBUG});
         $cb->($ua, $tx, $data, $self);
         $self->process($end);
       });
