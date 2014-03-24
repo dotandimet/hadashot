@@ -143,7 +143,7 @@ sub update_feed {
             $item->{$_} = bson_time $item->{$_} * 1000;
           }
           else { # no date, so save when we stored it:
-            $item->{$_} = $now;
+            $item->{$_} = bson_time $now;
           }
         }
         $self->store_feed_item($item, $delay->begin(0));
