@@ -40,21 +40,21 @@
 
 <script type="text/jsx">
 /** @jsx React.DOM */
-var subscription = React.createClass({
+var Subscription = React.createClass({
   render: function() {
     return(
-    <div className="list-group-item" key={this.props._id}>
+    <div className="list-group-item" key={this.props.key}>
     <div className="list-group-item-heading">
 <a href={this.props.xmlUrl}><i className="fa fa-rss"></i> rss</a>
 <a href={this.props.htmlUrl} dir="ltr">{this.props.title}</a>
-<a href={ "/view/feed?src=" + window.encodeURIComponent(this.props.xmlUrl) }
+<a href={ "#src=" + window.encodeURIComponent(this.props.xmlUrl) }
 title={  (this.props.last && this.props.last > 0) ? 'Latest item: ' + moment(this.props.last).fromNow() : '...' }
 data-toggle="tooltip"
 className="badge">{ (this.props.items) ? this.props.items : 0 }</a>
 </div>
 <div className="list-group-item-text">
 { (this.props.categories) ?
-   $.map(this.props.categories, function(v,i) { return <span className="label label-default">{v}</span>; })
+   $.map(this.props.categories, function(v,i) { return <span className="label label-default" key={v}>{v}</span>; })
    : <span className="label label-default">uncategorized</span> }
 { (this.props.last_modified) ? ' Last Modified: ' + moment(this.props.last_modified).fromNow() : '' }
 { (this.props.etag) ? ' Etag: ' + this.props.etag : '' }
@@ -69,33 +69,41 @@ title={(this.props.error) ? this.props.error : 'Not Active'} data-toggle="toolti
 
 var blogroll = React.createClass({
   getInitialState: function() {
-    return { items: [{"_id":"53306d21a44cbc2f6792dec7","active":1,"categories":["comics"],"description":"Comics. Often dirty. Updates Sundays.","htmlUrl":"http:\/\/oglaf.com\/latest\/","text":"Oglaf! -- Comics. Often dirty.","title":"Oglaf! -- Comics. Often dirty.","type":"rss","xmlUrl":"http:\/\/oglaf.com\/feeds\/rss\/","items":255,"last":1395682592836}] };
+    return { items: [] };
   },
   render: function() {
      var items = this.state.items.map(function(item, i){
         return (
-          <subscription error={item.error} active={item.active}
+          <Subscription error={item.error} active={item.active}
           xmlUrl={item.xmlUrl} htmlUrl={item.htmlUrl} title={item.title}
           last={item.last} items={item.items} categories={item.categories}
           last_modified={item.last_modified} etag={item.etag} key={item._id} />
         )
      }.bind(this));
    return <div>{items}</div>;
+  },
+  handleLoad: function() {
+      $.getJSON('/settings/blogroll', { js: 1 },
+          function(resp) {
+            this.setState({items: resp.subs});
+          }.bind(this) );
+  },
+  componentDidMount: function() {
+    this.handleLoad();
   }
 });
 
 var FeedItem = React.createClass({
   render: function() {
   return (
-<div className="entry panel panel-default" id={ this.props.key }>
+<div className="entry panel panel-default" key={ this.props.key }>
   <div className="panel-heading">
   <h4 className="title panel-title"><a href={ this.props.link } dir={ this.props.title.dir }>{ this.props.title.content }</a></h4>
   <span className="tim">{ new Date(parseInt(this.props.published)).toString() }</span>
   <a href={ "/feed/debug/?_id=" + this.props.key }>debug</a>
- <a className="origin fa fa-rss" href={
- window.encodeURIComponent(this.props.origin) } title={"Source: " + this.props.origin }> </a>
+ <a className="origin fa fa-rss" href={ window.encodeURIComponent(this.props.origin) } title={"Source: " + this.props.origin }> </a>
 { (this.props.tags) ? this.props.tags.map(function(t){return <a className="tag label label-default"
-  href={"?tag=" + window.encodeURIComponent(t) }>{ t }</a> }) : ''
+  href={"?tag=" + window.encodeURIComponent(t) } key={ t }>{ t }</a> }) : <span />
  }
 </div>
 <div className="panel-body">
@@ -126,8 +134,27 @@ var Feeds = React.createClass({
         )
      }.bind(this));
    return <div>{items}</div>;
+  },
+  handleLoad: function() {
+    var arg = query_str_to_obj(window.location.hash.substr(1));
+    console.log("Arg is: " + JSON.stringify(arg));
+    $.getJSON('/feed/river', arg, function(resp) {
+        var items = resp.items;
+        this.setState({ items: resp.items })
+        last_on_page = items[items.length-1].published;
+        first_on_page = items[0].published;
+    }.bind(this));
+  },
+  componentDidMount: function() {
+    this.handleLoad();
   }
 });
+
+var feeds = React.renderComponent( Feeds(), document.getElementById('feeds') );
+var subs = React.renderComponent( blogroll(), document.getElementById('sublist') );
+
+$( window ).on('hashchange', function() { feeds.handleLoad(); });
+
 </script>
 
 <script language="javascript">
@@ -161,13 +188,6 @@ var Feeds = React.createClass({
       : 'align="left" dir="ltr"';
    };
    function initFeeds() {
-    var arg = query_str_to_obj(document.location.search.substr(1));
-    $.getJSON('/feed/river', arg, function(resp) {
-        var items = resp.items;
-        var feeds = React.renderComponent( Feeds(), document.getElementById('feeds') );
-        feeds.setState({items: items});
-        last_on_page = items[items.length-1].published;
-        first_on_page = items[0].published;
         $('#before a').attr('title', 'items earlier than ' + todate(last_on_page));
         var toc = $('#sidebar ul.toc');
         toc.empty();
@@ -178,7 +198,6 @@ var Feeds = React.createClass({
         $(document.body).scrollspy('refresh');
         $('#feeds .origin').tooltip();
 
-    });
     $(document.body).scrollspy({target: '#sidebar', offset: 80});
     // $('#feeds').scrollspy({target: '#sidebar'});
       $('#before a').click(earlier);
@@ -186,8 +205,8 @@ var Feeds = React.createClass({
    };
 
    function initPage() {
-      initSubs();
-      initFeeds();
+      // initSubs();
+      // initFeeds();
    }
 
   function query_str_to_obj(q, o) {

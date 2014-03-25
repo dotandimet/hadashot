@@ -28,37 +28,44 @@ sub import_opml {
 
 sub blogroll {
   my ($self) = @_;
-  my $subs = undef;
-  $subs = $self->backend->feeds->find()->all();
-  my $have_items = $self->backend->items->aggregate(
-    [
-      {
-        '$group' => {
-          '_id'   => '$origin',
-          'items' => {'$sum' => 1},
-          'last'  => {'$max' => '$published'}
+  $self->render_later();
+  my $delay = Mojo::IOLoop->delay(
+    sub {
+      my ($delay) = @_;
+      $self->backend->feeds->find()->all($delay->begin());
+      $self->backend->items->aggregate(
+      [
+        {
+          '$group' => {
+            '_id'   => '$origin',
+            'items' => {'$sum' => 1},
+            'last'  => {'$max' => '$published'}
+          }
         }
-      }
-    ]
-  );
+      ],
+      $delay->begin()
+    );
+   },
+   sub {
+    my ($delay, $err1, $subs, $err2, $have_items) = @_;
+    my %items_per_sub
+      = map { $_->{_id} => [$_->{items}, $_->{last}] } @$have_items;
 
-# $self->app->log->info($self->dumper($have_items));
-  my %items_per_sub
-    = map { $_->{_id} => [$_->{items}, $_->{last}] } @$have_items;
-
-# $self->app->log->info($self->dumper(\%items_per_sub));
-  foreach my $s (@$subs) {
-    $s->{'items'} = $items_per_sub{$s->{xmlUrl}}[0] || 0;
-    $s->{'last'}  = $items_per_sub{$s->{xmlUrl}}[1] || 0;
-  }
-  @$subs
-    = sort { $b->{last} <=> $a->{last} || $b->{items} <=> $a->{items} } @$subs;
-  if ($self->param('js')) {
-    $self->render(json => {subs => $subs});
-  }
-  else {
-    $self->render(subs => $subs);
-  }
+    foreach my $s (@$subs) {
+      $s->{'items'} = $items_per_sub{$s->{xmlUrl}}[0] || 0;
+      $s->{'last'}  = $items_per_sub{$s->{xmlUrl}}[1] || 0;
+    }
+    @$subs
+      = sort { $b->{last} <=> $a->{last} || $b->{items} <=> $a->{items} } @$subs;
+    if ($self->param('js')) {
+      $self->render(json => {subs => $subs});
+    }
+    else {
+      $self->render(subs => $subs);
+    }
+#    print STDERR "In blogroll - ", join q{,}, map { ref $_ } @_;
+#    $self->render(text => 'blah!');
+   } );
 }
 
 sub fetch_subscriptions {
