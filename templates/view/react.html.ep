@@ -1,0 +1,231 @@
+% layout 'bootstrap';
+% title 'Now with javascript';
+% content_for extra_scripts => begin
+     %= javascript url_for('/js/libs/moment-2.2.1.js')
+     %= javascript url_for('/js/libs/moment-timezone-0.0.1.js')
+     %= javascript url_for('/js/hadashot.js')
+     %= javascript url_for("//fb.me/react-with-addons-0.9.0.js")
+     %= javascript url_for("//fb.me/JSXTransformer-0.9.0.js")
+
+% end
+
+<style type="text/css">
+#feeds {
+/*  overflow: auto;
+  position: relative;
+  height: 600px; */
+}
+.entry img, .entry iframe, .entry object {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+</style>
+<div class="container">
+  <div class="row">
+    <div id="sublist" class="col-md-3 list-group">
+      <p>It looks like you aren't subscribed to any feeds.</p>
+      <p>Use <b>Settings -> Import...</b> to load some.</p>
+    </div>
+    <div class="col-md-9">
+      <h2>Your Feed</h2>
+      <div id="feeds">
+      </div>
+      <ul class="pager">
+        <li id="before" class="previous"><a href="#">Earlier</a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script type="text/jsx">
+/** @jsx React.DOM */
+var subscription = React.createClass({
+  render: function() {
+    return(
+    <div className="list-group-item" key={this.props._id}>
+    <div className="list-group-item-heading">
+<a href={this.props.xmlUrl}><i className="fa fa-rss"></i> rss</a>
+<a href={this.props.htmlUrl} dir="ltr">{this.props.title}</a>
+<a href={ "/view/feed?src=" + window.encodeURIComponent(this.props.xmlUrl) }
+title={  (this.props.last && this.props.last > 0) ? 'Latest item: ' + moment(this.props.last).fromNow() : '...' }
+data-toggle="tooltip"
+className="badge">{ (this.props.items) ? this.props.items : 0 }</a>
+</div>
+<div className="list-group-item-text">
+{ (this.props.categories) ?
+   $.map(this.props.categories, function(v,i) { return <span className="label label-default">{v}</span>; })
+   : <span className="label label-default">uncategorized</span> }
+{ (this.props.last_modified) ? ' Last Modified: ' + moment(this.props.last_modified).fromNow() : '' }
+{ (this.props.etag) ? ' Etag: ' + this.props.etag : '' }
+</div>
+{(!this.props.active || !this.props.active) ? <span className="label label-warning"
+title={(this.props.error) ? this.props.error : 'Not Active'} data-toggle="tooltip">
+<span className="glyphicon glyphicon-warning-sign" />
+</span> : '' }
+</div>
+)
+} });
+
+var blogroll = React.createClass({
+  getInitialState: function() {
+    return { items: [{"_id":"53306d21a44cbc2f6792dec7","active":1,"categories":["comics"],"description":"Comics. Often dirty. Updates Sundays.","htmlUrl":"http:\/\/oglaf.com\/latest\/","text":"Oglaf! -- Comics. Often dirty.","title":"Oglaf! -- Comics. Often dirty.","type":"rss","xmlUrl":"http:\/\/oglaf.com\/feeds\/rss\/","items":255,"last":1395682592836}] };
+  },
+  render: function() {
+     var items = this.state.items.map(function(item, i){
+        return (
+          <subscription error={item.error} active={item.active}
+          xmlUrl={item.xmlUrl} htmlUrl={item.htmlUrl} title={item.title}
+          last={item.last} items={item.items} categories={item.categories}
+          last_modified={item.last_modified} etag={item.etag} key={item._id} />
+        )
+     }.bind(this));
+   return <div>{items}</div>;
+  }
+});
+
+var FeedItem = React.createClass({
+  render: function() {
+  return (
+<div className="entry panel panel-default" id={ this.props._id }>
+  <div className="panel-heading">
+  <h4 className="title panel-title"><a href={ this.props.link } dir={ this.props.title.dir }>{ this.props.title.content }</a></h4>
+  { todate(this.props.published) }
+  <a href={ "/feed/debug/?_id=" + this.props._id }>debug</a>
+ <a className="origin fa fa-rss" href={
+ window.encodeURIComponent(this.props.origin) } title={"Source: " + this.props.origin }> </a>
+{ (this.props.tags) ? this.props.tags.map(function(t){return <a className="tag label label-default"
+  href={"?tag=" + window.encodeURIComponent(t) }>{ t }</a> }) : ''
+ }
+</div>
+<div className="panel-body">
+  { ((this.props.content)) ?
+  <div className="content" dir={ this.props.content.dir }
+  dangerouslySetInnerHTML={{__html: this.props.content.content }} /> : ''
+  }
+  { (!this.props.content && this.props.description) ?
+  <div className="well" dir={ this.props.description.dir }
+       dangerouslySetInnerHTML={{__html: this.props.description.content }} />
+  : ''
+  }
+</div>
+</div>
+);
+  }
+});
+
+var Feeds = React.createClass({
+  getInitialState: function() { return { items: [] }; },
+  render: function() {
+     var items = this.state.items.map(function(item, i){
+        return (
+          <FeedItem content={item.content} key={item._id} link={item.link}
+          title={item.title} description={item.description}
+          published={item.published} origin={item.origin} tags={item.tags}
+          />
+        )
+     }.bind(this));
+   return <div>{items}</div>;
+  }
+});
+</script>
+
+<script language="javascript">
+  var f = 0;
+  document.onreadystatechange = 
+  function(){
+    if (f == 0) {
+      $(initPage);
+    }  
+    f = 1;
+    };
+  function initSubs() {
+      $.getJSON('/settings/blogroll', { js: 1 },
+          function(resp) {
+            var subs = React.renderComponent( blogroll(),
+                document.getElementById('sublist'),
+                function() {
+                  $('#sublist .badge').tooltip();
+                });
+            subs.setState({items: resp.subs});
+          } );
+  };
+  var last_on_page = new Date().getTime();
+  var first_on_page = 0;
+  function todate(tim) {
+    return new Date(parseInt(tim));
+  };
+  function dirp(od) {
+    return (od === 'rtl') 
+      ? 'align="right" dir="rtl"' 
+      : 'align="left" dir="ltr"';
+   };
+   function initFeeds() {
+    var arg = query_str_to_obj(document.location.search.substr(1));
+    $.getJSON('/feed/river', arg, function(resp) {
+        var items = resp.items;
+        var feeds = React.renderComponent( Feeds(), document.getElementById('feeds') );
+        feeds.setState({items: items});
+        last_on_page = items[items.length-1].published;
+        first_on_page = items[0].published;
+        $('#before a').attr('title', 'items earlier than ' + todate(last_on_page));
+        var toc = $('#sidebar ul.toc');
+        toc.empty();
+        $.each(items, function(i, val) {
+            var link = $('<a>').text(val.title.content).attr('href', '#c' + val._id).attr('dir', val.title.dir);
+            $('<li>').appendTo(toc).append(link);
+      });
+        $(document.body).scrollspy('refresh');
+        $('#feeds .origin').tooltip();
+
+    });
+    $(document.body).scrollspy({target: '#sidebar', offset: 80});
+    // $('#feeds').scrollspy({target: '#sidebar'});
+      $('#before a').click(earlier);
+   //   $('#feeds').on('click', 'a.origin', load_feed);
+   };
+
+   function initPage() {
+      initSubs();
+      initFeeds();
+   }
+
+  function query_str_to_obj(q, o) {
+    if (o === undefined) {
+      o = { js : 1 };
+    }
+    var arg_pairs = q.split('&');
+    for(var i=0; i < arg_pairs.length; i++) {
+      var kv = arg_pairs[i].split('=');
+      if (kv.length == 2) {
+        var k = window.decodeURIComponent(kv[0]);
+        var v = window.decodeURIComponent(kv[1]);
+        o[k] = v;
+      }
+    }
+    return o;
+  }
+
+  function obj_to_query_str(o) {
+    var s = '';
+    var args = [];
+    for(var k in o) {
+      args.push(window.encodeURIComponent(k) + '=' + window.encodeURIComponent(o[k]));
+    }
+    s += args.join('&');
+    return s;
+  }
+
+  function earlier() {
+    feeds.load(feeds.url, { before: last_on_page });
+//    hadashot.subsLoad('#feeds', 'feed_tmpl', '/feed/river/?js=1&before=' + last_on_page, 'items');
+    return false;
+  }
+  function load_feed(ev) {
+    ev.preventDefault();
+    feeds.load(feeds.url, { src: this.href });
+    // hadashot.subsLoad('#feeds', 'feed_tmpl', '/feed/river/?js=1&src=' + this.href, 'items');
+    return false;
+  }
+</script>
+

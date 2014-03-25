@@ -52,6 +52,10 @@
     <!-- react.js -->
     <script src="//fb.me/react-with-addons-0.9.0.js"></script>
     <script src="//fb.me/JSXTransformer-0.9.0.js"></script>
+    <!-- local version of moment.js -->
+    <script src="/js/libs/moment-2.2.1.js"></script>
+    <script src="/js/libs/moment-timezone-0.0.1.js"></script>
+    <script src="/js/hadashot.js"></script>
 <script type="text/jsx">
 /** @jsx React.DOM */
 
@@ -59,7 +63,9 @@ var FeedItem = React.createClass({
   render: function() {
     return (
       <div className="entry panel panel-default">
-      <div className="panel-heading">{this.props.heading}</div>
+      <div className="panel-heading">
+      <h4 className="title panel-title">{this.props.heading}</h4>
+      </div>
       <div className="panel-body"> {this.props.body}</div>
       </div>
     );
