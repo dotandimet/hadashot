@@ -90,7 +90,7 @@ var FeedItem = React.createClass({
 <div className="entry panel panel-default" id={ this.props.key }>
   <div className="panel-heading">
   <h4 className="title panel-title"><a href={ this.props.link } dir={ this.props.title.dir }>{ this.props.title.content }</a></h4>
-  { todate(this.props.published) }
+  <span className="tim">{ new Date(parseInt(this.props.published)).toString() }</span>
   <a href={ "/feed/debug/?_id=" + this.props.key }>debug</a>
  <a className="origin fa fa-rss" href={
  window.encodeURIComponent(this.props.origin) } title={"Source: " + this.props.origin }> </a>
