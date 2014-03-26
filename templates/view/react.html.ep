@@ -47,7 +47,7 @@ var Subscription = React.createClass({
     <div className="list-group-item-heading">
 <a href={this.props.xmlUrl}><i className="fa fa-rss"></i> rss</a>
 <a href={this.props.htmlUrl} dir="ltr">{this.props.title}</a>
-<a href={ "#src=" + window.encodeURIComponent(this.props.xmlUrl) }
+<a href={ "#" + obj_to_query_str({src : this.props.xmlUrl}) }
 title={  (this.props.last && this.props.last > 0) ? 'Latest item: ' + moment(this.props.last).fromNow() : '...' }
 data-toggle="tooltip"
 className="badge">{ (this.props.items) ? this.props.items : 0 }</a>
@@ -215,10 +215,12 @@ $( window ).on('hashchange', function() { feeds.handleLoad(); });
     }
     var arg_pairs = q.split('&');
     for(var i=0; i < arg_pairs.length; i++) {
-      var kv = arg_pairs[i].split('=');
-      if (kv.length == 2) {
-        var k = window.decodeURIComponent(kv[0]);
-        var v = window.decodeURIComponent(kv[1]);
+      // do this instead of split so we can keep embedded search strings (with a single arg)
+      // why isn't encodeURIComponent hiding those embedded search strings?
+      var sep = arg_pairs[i].indexOf('=');
+      if (sep != -1) {
+        var k = window.decodeURIComponent(arg_pairs[i].substring(0, sep));
+        var v = window.decodeURIComponent(arg_pairs[i].substring(sep+1));
         o[k] = v;
       }
     }
