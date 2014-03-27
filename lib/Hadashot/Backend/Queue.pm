@@ -8,7 +8,10 @@ has max => sub { $_[0]->ua->max_connections || 4 };
 has active => sub { 0 };
 has jobs => sub { [] };
 has delay => sub { undef };
+has timer => sub { undef };
 has ua => sub { Mojo::UserAgent->new()->max_redirects(5)->connect_timeout(30) };
+
+use constant DEBUG => $ENV{HADASHOT_DEBUG} || 0;
 
 sub pending {
   my $self = shift;
@@ -27,6 +30,24 @@ for my $name (qw(delete get head options patch post put)) {
   };
 }
 
+sub start {
+  my ($self) = @_;
+  unless ($self->timer) {
+    my $id = Mojo::IOLoop->recurring(3 => sub { $self->process(); });
+    $self->timer($id);
+  }
+  return $self;
+}
+
+sub stop {
+  my ($self) = @_;
+  if ($self->timer) {
+    Mojo::IOLoop->remove($self->timer);
+    $self->timer(undef);
+  }
+  return $self;
+}
+
 sub enqueue {
   my $self = shift;
   # validate the job:
@@ -36,8 +57,9 @@ sub enqueue {
     die "enqueue requires a callback (cb key) in the hashref argument" unless ($job->{'cb'} && ref $job->{'cb'} eq 'CODE');
   # other valid keys: headers, data, method
   push @{$self->jobs}, $job;
-  print STDERR "\nenqueued request for ", $job->{'url'}, "\n" if ($ENV{HADASHOT_DEBUG});
+  print STDERR "\nenqueued request for ", $job->{'url'}, "\n" if (DEBUG);
   }
+  $self->start;
   return $self; # make chainable?
 }
 
@@ -47,35 +69,25 @@ sub dequeue {
 }
 
 sub process {
-  my ($self, $func) = @_;
-  unless ($self->delay) {
-    $self->delay( Mojo::IOLoop->delay(
-    (defined $func && ref $func eq 'CODE')
-    ? sub { my $delay = shift; $self->delay(undef); $func->(@_); }
-    : sub { my $delay = shift; warn "There are still pending jobs!" if ($self->pending); $self->delay(undef); }
-    ) );
-  }
-  else {
-    # func is just a counter decrement, call it.
-    $func->() if (defined $func && ref $func eq 'CODE');
-  }
+  my ($self) = @_;
   # we have jobs and can run them:
   while ($self->active < $self->max and my $job = $self->dequeue) {
       my ($url, $headers, $cb, $data, $method) = map { $job->{$_} } (qw(url headers cb data method));
       $method ||= 'get';
       $self->active($self->active+1);
-      my $end = $self->delay->begin(0);
       $self->ua->$method($url => $headers => sub {
         my ($ua, $tx) = @_;
         $self->active($self->active-1);
         print STDERR "handled " . $tx->req->url,
                      , " active is now ", $self->active, ", pending is ", $self->pending , "\n"
-                     if ($ENV{HADASHOT_DEBUG});
+                     if (DEBUG);
         $cb->($ua, $tx, $data, $self);
-        $self->process($end);
+        $self->process();
       });
   }
-  $$self->delay->wait unless(Mojo::IOLoop->is_running);
+  if ($self->pending == 0 && $self->active == 0) {
+    $self->stop(); # the timer shouldn't run STAM.
+  }
 }
 
 1;

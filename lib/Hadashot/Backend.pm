@@ -12,6 +12,8 @@ use Mojolicious::Plugin::FeedReader;
 
 use Hadashot::Backend::Queue;
 
+use constant DEBUG => $ENV{HADASHOT_DEBUG} || 0;
+
 has conf  => sub { {} };
 has dbh   => sub { Mango->new($_[0]->conf->{'db_connect'}) };
 has db    => sub { $_[0]->dbh->db($_[0]->conf->{'db_name'}); };
@@ -84,7 +86,7 @@ sub save_subscription {
        shift;
        my ($err) = @_; 
        die "Error $err" if ($err);
-       print STDERR "Saved " . $sub->{xmlUrl} if ($ENV{HADASHOT_DEBUG});
+       warn "Saved " . $sub->{xmlUrl} . "\n" if (DEBUG);
     });
     $cb = $delay->begin(0);
   };
@@ -95,7 +97,7 @@ sub save_subscription {
     { upsert => bson_true },
     sub {
       my ($col, $err, $doc) = @_;
-      print STDERR "updated sub - " . $sub->{xmlUrl} . ' ' . (($err) ? $err : '') . ' ' . dumper($doc) if ($ENV{HADASHOT_DEBUG});
+      warn "updated sub - " . $sub->{xmlUrl} . ' ' . (($err) ? $err : '') . ' ' . dumper($doc) . "\n" if (DEBUG);
       $cb->( (($err) ? $err : undef ) ); # notify caller of errors
    }
   );
@@ -135,7 +137,7 @@ sub update_feed {
       my ($delay, @items) = (@_);
       my $now = bson_time();
       foreach my $item (@items) {
-        print STDERR "Storing item... " . $item->{'link'} . '-' . $item->{'title'} if ($ENV{'HADASHOT_DEBUG'});
+        warn "Storing item... " . $item->{'link'} . '-' . $item->{'title'} . "\n" if (DEBUG);
       # convert dates to Mongodb BSON ?
         $now = $now - 2000; # decrement default "date" between items - because RSS is ordered from new to old.
         for (qw(published updated)) {
@@ -153,7 +155,7 @@ sub update_feed {
       my ($delay, @args) = @_;
       unless ($delay->data('saved')) {
         $delay->data('saved' => $sub->{xmlUrl});
-        print STDERR "Saved update to subscription", $sub->{xmlUrl} if ($ENV{'HADASHOT_DEBUG'});
+        warn "Saved update to subscription", $sub->{xmlUrl} . "\n" if (DEBUG);
         $self->save_subscription($sub, $delay->begin(0));
       }
    },
@@ -162,7 +164,7 @@ sub update_feed {
     return $cb->(@args);
   }
   );
-  $delay->on('error' => sub { print STDERR "Error in update_feed:", @_; });
+  $delay->on('error' => sub { warn "Error in update_feed:", @_; });
 #  $delay->wait unless (Mojo::IOLoop->is_running);
 }
 
@@ -294,7 +296,7 @@ sub handle_feed_update {
   if ( !$feed ) {
     my $err = $info->{'error'};
     unless ($err) {
-      print STDERR "No feed and no error message, ",
+      warn "No feed and no error message, ",
             dumper($info);
     }
     $self->log->warn( "Problem getting feed:",
@@ -306,6 +308,7 @@ sub handle_feed_update {
           { xmlUrl => $sub->{xmlUrl} },
           sub {
             my ($c, $err, $doc) = @_;
+            $self->log->warn("removed doc " . dumper($doc) );
             $delay->pass(($err) ? $err : ());
             }
           );
@@ -345,7 +348,7 @@ sub fetch_subscriptions {
       sub {
         my ($delay, $cur, $err, $subs) = @_;
         $delay->pass($err) if ($err);
-        print STDERR "Will check " . scalar @$subs . " feeds" if ($ENV{HADASHOT_DEBUG});
+        warn "Will check " . scalar @$subs . " feeds" if (DEBUG);
         foreach my $sub (@$subs) {
           my $end = $delay->begin(0);
           $self->queue->get(
@@ -358,12 +361,11 @@ sub fetch_subscriptions {
             }
           );
         };
-        $self->queue->process();
     },
     sub {
       my ($delay, $err) = @_;
-      print STDERR "Final step in fetch_subscriptions - did we reach it?" if ($ENV{HADASHOT_DEBUG});
-      print STDERR "fetch_subscriptions failed: $err" if ($err);
+      warn "Final step in fetch_subscriptions - did we reach it?\n" if (DEBUG);
+      warn "fetch_subscriptions failed: $err\n" if ($err);
       return;
     });
     $delay->wait unless Mojo::IOLoop->is_running;
