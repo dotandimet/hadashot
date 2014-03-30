@@ -288,7 +288,7 @@ sub cleanup_feedproxy {
 sub handle_feed_update {
   my ($self, $sub, $feed, $info, $cb) = @_;
   my $delay = Mojo::IOLoop->delay(
-    sub { 
+    sub {
       my ($delay, @args) = @_;
       $self->log->info("handle feed update finish " . dumper(\@args));
       $cb->(@args);

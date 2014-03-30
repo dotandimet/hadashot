@@ -19,6 +19,21 @@
   max-height: 100%;
 }
 
+.align-left: {
+  text-align: left;
+}
+
+.align-right: {
+  text-align: right;
+}
+
+[dir=ltr] .author:not(:empty):before {
+  content: ' by ';
+}
+
+[dir=rtl] .author:not(:empty):before {
+  content: ' מאת ';
+}
 </style>
 <div class="container">
   <div class="row">
@@ -40,6 +55,7 @@
 
 <script type="text/jsx">
 /** @jsx React.DOM */
+
 var Subscription = React.createClass({
   render: function() {
     return(
@@ -98,7 +114,10 @@ var FeedItem = React.createClass({
   return (
 <div className="entry panel panel-default" key={ this.props.key }>
   <div className="panel-heading">
-  <h4 className="title panel-title"><a href={ this.props.link } dir={ this.props.title.dir }>{ this.props.title.content }</a></h4>
+  <h4 className={ "title panel-title " + ( (this.props.title.dir === 'rtl') ? 'align-right' : 'align-left' ) }
+      dir={ this.props.title.dir }>
+  <a href={ this.props.link }>{ this.props.title.content }</a>
+  <span className="author">{ this.props.author ? this.props.author : '' }</span></h4>
   <span className="tim">{ new Date(parseInt(this.props.published)).toString() }</span>
   <a href={ "/feed/debug/?_id=" + this.props.key }>debug</a>
  <a className="origin fa fa-rss" href={ window.encodeURIComponent(this.props.origin) } title={"Source: " + this.props.origin }> </a>
@@ -109,11 +128,13 @@ var FeedItem = React.createClass({
 <div className="panel-body">
   { ((this.props.content)) ?
   <div className="content" dir={ this.props.content.dir }
+    align={ (this.props.content.dir === 'rtl') ? 'right' : 'left' }
   dangerouslySetInnerHTML={{__html: this.props.content.content }} /> : ''
   }
   { (!this.props.content && this.props.description) ?
   <div className="well" dir={ this.props.description.dir }
-       dangerouslySetInnerHTML={{__html: this.props.description.content }} />
+   align={ (this.props.description.dir === 'rtl') ? 'right' : 'left' }
+    dangerouslySetInnerHTML={{__html: this.props.description.content }} />
   : ''
   }
 </div>
@@ -130,6 +151,7 @@ var Feeds = React.createClass({
           <FeedItem content={item.content} key={item._id} link={item.link}
           title={item.title} description={item.description}
           published={item.published} origin={item.origin} tags={item.tags}
+          author={item.author}
           />
         )
      }.bind(this));
@@ -158,14 +180,6 @@ $( window ).on('hashchange', function() { feeds.handleLoad(); });
 </script>
 
 <script language="javascript">
-  var f = 0;
-  document.onreadystatechange = 
-  function(){
-    if (f == 0) {
-      $(initPage);
-    }  
-    f = 1;
-    };
   function initSubs() {
       $.getJSON('/settings/blogroll', { js: 1 },
           function(resp) {
@@ -204,10 +218,6 @@ $( window ).on('hashchange', function() { feeds.handleLoad(); });
    //   $('#feeds').on('click', 'a.origin', load_feed);
    };
 
-   function initPage() {
-      // initSubs();
-      // initFeeds();
-   }
 
   function query_str_to_obj(q, o) {
     if (o === undefined) {
