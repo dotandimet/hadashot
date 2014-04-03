@@ -2,7 +2,19 @@
 use 5.016;
 use Hadashot::Backend::Queue;
 use Mojo::Util qw(encode);
- use Test::More skip_all => "This is not a test";
+use Test::Mojo;
+# use Test::More skip_all => "This is not a test";
+
+# make a terrifying test server:
+
+use Mojolicious::Lite;
+
+get '/fast/:foo' => sub { my $self = shift;
+                          $self->render(text => "you want " . $self->param('foo'));
+                        };
+get '/slow/:foo' => sub { my $self = shift;
+                          $self->render(text => "you want " . $self->param('foo'));
+                        };
 
 sub on_response {
   my ($ua, $tx, $totals) = @_;
@@ -38,7 +50,6 @@ for (@urls9) {
   $Q->enqueue({ url => $_, cb => \&on_response, data => $stats });
   say $Q->active;
 }
-$Q->process(); # blocking :(
 say $stats->{ok}, ' succeeded, ', $stats->{fail} , " failed";
 
 say "Will fetch all ", scalar @urls;
@@ -48,8 +59,10 @@ for (@urls) {
   $Q->enqueue({ url => $_, cb => \&on_response, data => $stats });
   say $Q->active;
 }
-$Q->process();
 say $stats->{ok}, ' succeeded, ', $stats->{fail} , " failed"; 
+
+Mojo::IOLoop->start unless (Mojo::IOLoop->is_running);
+
 __DATA__
 http://rcrowley.org/
 http://www.notes.co.il/eshed

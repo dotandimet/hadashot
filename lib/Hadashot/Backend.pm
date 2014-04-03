@@ -6,7 +6,7 @@ use Mojo::JSON;
 use Mojo::Util qw(decode slurp trim dumper);
 use Mojo::IOLoop;
 use Mango;
-use Mango::BSON qw(bson_time bson_true);
+use Mango::BSON qw(bson_time bson_true bson_false);
 
 use Mojolicious::Plugin::FeedReader;
 
@@ -97,7 +97,7 @@ sub save_subscription {
     { upsert => bson_true },
     sub {
       my ($col, $err, $doc) = @_;
-      warn "updated sub - " . $sub->{xmlUrl} . ' ' . (($err) ? $err : '') . ' ' . dumper($doc) . "\n" if (DEBUG);
+      warn "updated sub - " . $sub->{xmlUrl} . ' ' . (($err) ? $err : '') . "\n" if (DEBUG);
       $cb->( (($err) ? $err : undef ) ); # notify caller of errors
    }
   );
@@ -127,8 +127,15 @@ sub update_feed {
       my ($delay, @args) = @_;
       foreach my $item (@{$feed->{'items'}}) {
         $item->{'origin'} = $sub->{xmlUrl};    # save our source feed...
+        my $base = Mojo::URL->new($sub->{htmlUrl} || $sub->{xmlUrl});
          # fix relative links - because Sam Ruby is a wise-ass
-        $item->{'link'} = Mojo::URL->new($item->{'link'})->to_abs($item->{'origin'})->to_string;
+        eval {
+          local $SIG{'__WARN__'} = sub { warn "Warning ", $@, " ", dumper($item); };
+          $item->{'link'} = Mojo::URL->new($item->{'link'})->to_abs($base)->to_string;
+        };
+        if ($@) {
+          warn "Got an exception $@ when fixing link " . $item->{'link'} . "with base " . $base;
+        }
         #$self->cleanup_item_link($item, $delay->begin(0));
         $delay->pass($item);
       }
@@ -290,37 +297,29 @@ sub handle_feed_update {
   my $delay = Mojo::IOLoop->delay(
     sub {
       my ($delay, @args) = @_;
-      $self->log->info("handle feed update finish " . dumper(\@args));
+      $self->log->info("handle feed update finish ");
       $cb->(@args);
   });
+  $sub->{'lastCheck'} = bson_time();
+  # TODO - handle feed that is defined but empty 
+  # example -  http://downloads.bbc.co.uk/podcasts/fivelive/books/rss.xml
   if ( !$feed ) {
     my $err = $info->{'error'};
+    my $status = $info->{'code'} || '';
     unless ($err) {
       warn "No feed and no error message, ",
             dumper($info);
     }
     $self->log->warn( "Problem getting feed:",
-        $sub->{xmlUrl}, $err );
+        $sub->{xmlUrl}, "$status - $err" );
     if (   $err eq 'url no longer points to a feed'
         || $err eq 'Not Found' )
     {
-      $self->feeds->remove(
-          { xmlUrl => $sub->{xmlUrl} },
-          sub {
-            my ($c, $err, $doc) = @_;
-            $self->log->warn("removed doc " . dumper($doc) );
-            $delay->pass(($err) ? $err : ());
-            }
-          );
+      $sub->{dead} = 1; # for later removal
     }
-    elsif ( $err eq 'Not Modified' ) {
-      $delay->pass($err);
-    }
-    else {
-      $sub->{active} = 0;
-      $sub->{error}  = $err;
-      $self->save_subscription( $sub, $delay->begin(0) );
-    }
+    $sub->{active} = 0;
+    $sub->{error}  = $err;
+    $self->save_subscription( $sub, $delay->begin(0) );
   }
   else {
     $sub->{active} = 1;
@@ -328,22 +327,54 @@ sub handle_feed_update {
   }
 }
 
+sub remove_dead_feeds {
+  my $self = shift;
+  my $cb   = shift;
+  my $delay;
+  unless (defined $cb && ref $cb eq 'CODE') { # blocking call
+    $delay = Mojo::IOLoop->delay(sub {
+      my ($c, $err, @docs) = @_;
+      if ($err) {
+        $self->log->warn("Error in remove_dead_feeds: ", $err);
+      }
+      else {
+        $self->log->info("removed subscription marked as dead");
+      }
+    });
+    $cb = $delay->begin;
+  }
+  $self->feeds->remove(
+    { '$or' => [ { dead => 1 },
+                 { dead => { '$exists' => bson_false } }
+            ] }, $cb );
+  if ($delay) {
+    $delay->wait unless (Mojo::IOLoop->is_running);
+  }
+  1;
+}
+
+sub feeds_to_check {
+  my $self = shift;
+  my $cb   = shift;
+  my $last_check_wait = bson_time((time() - (60*30)) * 1000); # half an hour ago
+  $self->feeds->find( { '$or' => [ { active => 1 }, { active => { '$exists' => bson_false } } ],
+                       '$or' => [
+                        { lastCheck => { '$exists' => bson_false   } }, # lastCheck not set
+                        { lastCheck => { '$lt' => $last_check_wait } } # lastCheck older than half an hour ago
+                        ] } )->all($cb);
+}
+
 sub fetch_subscriptions {
     my ( $self, @feeds ) = @_;
-    my $query;
-    if (@feeds == 0) { # no feeds specified, fetch all:
-      $query = ();
-    }
-    elsif (defined $feeds[0] && $feeds[0] eq '1') {
-      $query = { "active" => 1 };
-    }
-    else {
-      $query = {xmlUrl => {'$in' => \@feeds}};
-    }
     my $delay = Mojo::IOLoop->delay(
       sub {
         my ($delay) = shift;
-        $self->feeds->find($query)->all( $delay->begin(0) );
+        if (@feeds) {
+          $self->feeds->find({xmlUrl => { '$in' => \@feeds }})->all( $delay->begin(0) );
+        }
+        else {
+          $self->feeds_to_check( $delay->begin(0) );
+        }
       },
       sub {
         my ($delay, $cur, $err, $subs) = @_;
@@ -353,7 +384,7 @@ sub fetch_subscriptions {
           my $end = $delay->begin(0);
           $self->queue->get(
             $sub->{xmlUrl},
-            $self->feed_reader->set_req_headers($sub),
+            set_req_headers($sub),
             sub {
                 my ( $ua,   $tx )   = @_;
                 my ( $feed, $info ) = $self->process_feed($tx);
@@ -376,7 +407,7 @@ sub process_feed {
   my $req_info = $self->req_info($tx);
   my $feed;
   if (!defined $req_info->{error} && $req_info->{'code'} == 200) {
-    eval { $feed = $self->feed_reader->parse_rss($tx->res->dom); };
+    eval { $feed = $self->feed_reader->parse_rss($tx->res->content->asset); };
     if ($@) { # assume no error from tx, because code is 200
       $req_info->{'error'} = $@;
     }

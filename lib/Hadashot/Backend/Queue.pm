@@ -7,7 +7,6 @@ use Mojo::Util 'monkey_patch';
 has max => sub { $_[0]->ua->max_connections || 4 };
 has active => sub { 0 };
 has jobs => sub { [] };
-has delay => sub { undef };
 has timer => sub { undef };
 has ua => sub { Mojo::UserAgent->new()->max_redirects(5)->connect_timeout(30) };
 
@@ -33,6 +32,7 @@ for my $name (qw(delete get head options patch post put)) {
 sub start {
   my ($self) = @_;
   unless ($self->timer) {
+    Mojo::IOLoop->start unless (Mojo::IOLoop->is_running);
     my $id = Mojo::IOLoop->recurring(3 => sub { $self->process(); });
     $self->timer($id);
   }

@@ -127,7 +127,6 @@ sub add_subscription {
         my ($delay, $err, $xmlUrl) = @_;
         return $delay->pass($err) unless ($xmlUrl);
         $self->backend->queue->get($xmlUrl, $delay->begin(0));
-        $self->backend->queue->process();
      },
      sub {
         my ($delay, $ua, $tx) = @_;
