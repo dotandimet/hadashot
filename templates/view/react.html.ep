@@ -18,11 +18,11 @@
   max-height: 100%;
 }
 
-.align-left: {
+[dir=ltr]: {
   text-align: left;
 }
 
-.align-right: {
+[dir=rtl]: {
   text-align: right;
 }
 
@@ -33,22 +33,56 @@
 [dir=rtl] .author:not(:empty):before {
   content: ' מאת ';
 }
+
+.myui {
+  position: absolute;
+  min-width: 600px;
+  width: 960px;
+  min-height: 600px;
+  max-height: 100%;
+  bottom: 0;
+  top: 60px;
+  left: 60px;
+  overflow: hide;
+  padding-left: 1em;
+  border: solid green 1px;
+  margin-bottom: 5px;
+}
+
+#sublist {
+  position: absolute;
+  width: 250px;
+  left: 0;
+  height: 100%;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  margin-right: 10px;
+  padding: 5px;
+  border: solid blue 1px;
+}
+
+#feeds {
+  position: absolute;
+  left: 25%;
+  height: 100%;
+  margin-left: 10px;
+  margin-right: 10px;
+  padding-right: 10px;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  border: solid red 1px;
+}
+
 </style>
 <div class="container">
-  <div class="row">
-    <div id="sublist" class="col-md-3 list-group">
+  <div class="myui">
+    <div id="sublist" class="list-group">
       <p>It looks like you aren't subscribed to any feeds.</p>
       <p>Use <b>Settings -> Subscribe...</b> or <b>Settings -> Import...</b>
       to add some.</p>
     </div>
-    <div class="col-md-9">
-      <h2>Your Feed</h2>
       <div id="feeds">
       </div>
-      <ul class="pager">
-        <li id="before" class="previous"><a href="#">Earlier</a></li>
-      </ul>
-    </div>
   </div>
 </div>
 

@@ -78,10 +78,9 @@ var blogroll = React.createClass({
 var FeedItem = React.createClass({displayName: 'FeedItem',
   render: function() {
   return (
-    React.DOM.div( {className:"entry panel panel-default", key: this.props.key }, 
+    React.DOM.div( {className:"entry panel panel-default", key: this.props.key },
       React.DOM.div( {className:"panel-heading"}, 
-        React.DOM.h4( {className: "title panel-title " + ( (this.props.title.dir === 'rtl') ? 'align-right' : 'align-left' ), 
-            dir: this.props.title.dir }, 
+        React.DOM.h4( {className: "title panel-title ", dir: this.props.title.dir },
         React.DOM.a( {href: this.props.link },  this.props.title.content ),
         React.DOM.span( {className:"author"},  this.props.author ? this.props.author : '' )),
         React.DOM.span( {className:"tim"},  moment(this.props.published).fromNow() ),
@@ -92,13 +91,11 @@ var FeedItem = React.createClass({displayName: 'FeedItem',
       ),
       React.DOM.div( {className:"panel-body"}, 
         ((this.props.content)) ?
-        React.DOM.div( {className:"content", dir: this.props.content.dir, 
-          align: (this.props.content.dir === 'rtl') ? 'right' : 'left', 
+        React.DOM.div( {className:"content", dir: this.props.content.dir,
         dangerouslySetInnerHTML:{__html: this.props.content.content }} ) : '',
 
         (!this.props.content && this.props.description) ?
-        React.DOM.div( {className:"well", dir: this.props.description.dir, 
-        align: (this.props.description.dir === 'rtl') ? 'right' : 'left', 
+        React.DOM.div( {className:"well", dir: this.props.description.dir,
           dangerouslySetInnerHTML:{__html: this.props.description.content }} )
         : ''
       )
@@ -147,11 +144,6 @@ $( window ).on('hashchange', function() { feeds.handleLoad(); });
 
   var last_on_page = new Date().getTime();
   var first_on_page = 0;
-  function dirp(od) {
-    return (od === 'rtl') 
-      ? { align: "right",  dir: "rtl" }
-      : { align: "left"    dir: "ltr" };
-   };
    function initFeeds() {
         $('#before a').attr('title', 'items earlier than ' + todate(last_on_page));
         var toc = $('#sidebar ul.toc');
