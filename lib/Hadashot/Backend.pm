@@ -10,7 +10,9 @@ use Mango::BSON qw(bson_time bson_true bson_false);
 
 use Mojolicious::Plugin::FeedReader;
 
-use Hadashot::Backend::Queue;
+use lib '../Mojo-UserAgent-Assistant/lib';
+use Mojo::UserAgent::Assistant;
+use Devel::Cycle;
 
 use constant DEBUG => $ENV{HADASHOT_DEBUG} || 0;
 
@@ -19,7 +21,7 @@ has dbh   => sub { Mango->new($_[0]->conf->{'db_connect'}) };
 has db    => sub { $_[0]->dbh->db($_[0]->conf->{'db_name'}); };
 has json  => sub { Mojo::JSON->new(); };
 has dom   => sub { Mojo::DOM->new(); };
-has queue    => sub { Hadashot::Backend::Queue->new(); };
+has queue    => sub { Mojo::UserAgent::Assistant->new(); };
 has feeds => sub { $_[0]->db()->collection($_[0]->conf->{'db_feeds'}) };
 has items => sub { $_[0]->db()->collection($_[0]->conf->{'db_items'}) };
 has bookmarks =>
@@ -375,6 +377,7 @@ sub fetch_subscriptions {
         else {
           $self->feeds_to_check( $delay->begin(0) );
         }
+
       },
       sub {
         my ($delay, $cur, $err, $subs) = @_;
@@ -389,6 +392,7 @@ sub fetch_subscriptions {
                 my ( $ua,   $tx )   = @_;
                 my ( $feed, $info ) = $self->process_feed($tx);
                 $self->handle_feed_update($sub, $feed, $info, $end);
+                # find_cycle($self);
             }
           );
         };

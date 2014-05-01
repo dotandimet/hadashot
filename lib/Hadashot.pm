@@ -35,7 +35,6 @@ sub startup {
     backend => sub {
       state $bak = Hadashot::Backend->new(
         conf => $config,
-        queue => Hadashot::Backend::Queue->new(ua => $self->ua),
         log  => $self->log
       );
     }
