@@ -26,11 +26,12 @@ $b->save_subscription({xmlUrl => '/atom.xml', title => 'first'});
 # parse and load a feed:
 my $delay = Mojo::IOLoop->delay;
 $delay->on(error => sub { die "Horrors: ", @_, "\n"; });
+my $end = $delay->begin();
 $t->app->parse_rss(
   Mojo::URL->new('/atom.xml'),
   sub {
     my ($c, $feed) = @_;
-    $b->update_feed({xmlUrl => '/atom.xml'}, $feed, $delay->begin());
+    $b->update_feed({xmlUrl => '/atom.xml'}, $feed, $end);
   }
 );
 $delay->wait unless (Mojo::IOLoop->is_running);
@@ -55,5 +56,7 @@ say $t->get_ok('/settings/blogroll?js=1')->status_is(200)
 # read it:
 $t->get_ok('/feed/river?js=1')->json_is('/total', 2)->json_is('/items/0/tags', ["Travel"]);
 
+# test for correct failure:
+$t->post_ok('/settings/add_subscription', form => {url => '/no_link.html'})->status_is(200)->content_like(qr/no feeds found for/i);
 
 done_testing();

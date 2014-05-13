@@ -9,7 +9,7 @@ sub import_opml {
   my (@subs, @loaded, @exist);
   if (my $in_file = $self->param('infile')) {
     if ($self->param('type') eq 'OPML') {
-      @subs = $self->backend->parse_opml($in_file->asset);
+      @subs = $self->parse_opml($in_file->asset);
       my $delay = Mojo::IOLoop->delay( sub {
         my ($delay, $err) = @_;
         print STDERR $err if ($err);

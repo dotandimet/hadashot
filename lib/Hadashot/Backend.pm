@@ -10,7 +10,6 @@ use Mango::BSON qw(bson_time bson_true bson_false);
 
 use Mojolicious::Plugin::FeedReader;
 
-use lib '../Mojo-UserAgent-Assistant/lib';
 use Mojo::UserAgent::Assistant;
 use Devel::Cycle;
 
@@ -52,41 +51,13 @@ sub reset {    # wanna drop all your data? cool.
   $self->log->info('dropped all subs and items');
 }
 
-sub parse_opml {
-  my ($self, $opml_file) = @_;
-  my $opml_str = decode 'UTF-8',
-    (ref $opml_file) ? $opml_file->slurp : slurp $opml_file;
-  my $d = $self->dom->parse($opml_str);
-  my (%subscriptions, %categories);
-  for my $item ($d->find(q{outline})->each) {
-    my $node = $item->attr;
-    if (!defined $node->{type} || $node->{type} ne 'rss') {
-      my $cat = $node->{title} || $node->{text};
-      $categories{$cat} = $item->children->pluck('attr', 'xmlUrl');
-    }
-    else {    # file by RSS URL:
-      $subscriptions{$node->{xmlUrl}} = $node;
-    }
-  }
-
-  # assign categories
-  for my $cat (keys %categories) {
-    $self->log->debug("category $cat\n");
-    for my $rss ($categories{$cat}->each) {
-      $subscriptions{$rss}{'categories'} ||= [];
-      push @{$subscriptions{$rss}{'categories'}}, $cat;
-    }
-  }
-  return (values %subscriptions);
-}
-
 sub save_subscription {
   my ($self, $sub, $cb) = @_;
   my $delay;
   unless ($cb && ref $cb eq 'CODE') {
     $delay = Mojo::IOLoop->delay(sub {
        shift;
-       my ($err) = @_; 
+       my ($err) = @_;
        die "Error $err" if ($err);
        warn "Saved " . $sub->{xmlUrl} . "\n" if (DEBUG);
     });
@@ -265,7 +236,7 @@ sub unshorten_url {
   $self->queue->ua->max_redirects(10);
   if ($cb) {    # try non-blocking
     $self->queue->head( # will use get; should use head
-        $url, 
+        $url,
         sub {
           my ($ua, $tx) = @_;
           if ($tx->success) {
@@ -303,7 +274,7 @@ sub handle_feed_update {
       $cb->(@args);
   });
   $sub->{'lastCheck'} = bson_time();
-  # TODO - handle feed that is defined but empty 
+  # TODO - handle feed that is defined but empty
   # example -  http://downloads.bbc.co.uk/podcasts/fivelive/books/rss.xml
   if ( !$feed ) {
     my $err = $info->{'error'};
@@ -325,6 +296,7 @@ sub handle_feed_update {
   }
   else {
     $sub->{active} = 1;
+    delete $sub->{error};
     $self->update_feed( $sub, $feed, $delay->begin(0) );
   }
 }

@@ -4,11 +4,15 @@ use strict;
 use warnings;
 
 use FindBin;
-BEGIN { 
+BEGIN {
   unshift @INC, "$FindBin::Bin/../lib";
   if (-d "$FindBin::Bin/../../Mojolicious-Plugin-FeedReader/lib") {
     unshift @INC, "$FindBin::Bin/../../Mojolicious-Plugin-FeedReader/lib";
   }
+  if (-d "$FindBin::Bin/../../Mojo-UserAgent-Assistant/lib") {
+    unshift @INC, "$FindBin::Bin/../../Mojo-UserAgent-Assistant/lib";
+  }
+
   binmode STDERR, ':utf8';
   binmode STDOUT, ':utf8';
  }
