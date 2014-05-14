@@ -12,7 +12,7 @@ sub import_opml {
       @subs = $self->parse_opml($in_file->asset);
       my $delay = Mojo::IOLoop->delay( sub {
         my ($delay, $err) = @_;
-        print STDERR $err if ($err);
+        $self->app->log->error($err) if ($err);
       } );
       $delay->on(finish => sub {
         $self->redirect_to('settings/blogroll');
@@ -87,8 +87,8 @@ sub fetch_subscriptions {
     sub {
       my ($self, $sub, $feed, $code, $err) = @_;
       if (!$feed) {
-        print STDERR "Problem getting feed:",
-          (($code) ? "Error code $code" : ''), (($err) ? "Error $err" : '');
+        $self->app->log->error("Problem getting feed:",
+          (($code) ? "Error code $code" : ''), (($err) ? "Error $err" : ''));
       }
       else {
         $self->backend->update_feed($sub, $feed);
@@ -119,7 +119,7 @@ sub add_subscription {
         return $delay->pass("No feeds found for $url :(")
           unless (@feeds > 0);
         # TODO add support for multiple feeds later ...
-        print STDERR ("Found feed: " . $feeds[0]);
+        $self->app->log->info("Found feed: " . $feeds[0]) ;
         $delay->data(xmlUrl => $feeds[0]);
         $delay->pass(undef, @feeds);
      },
