@@ -112,6 +112,7 @@ sub add_subscription {
     $self->render_later();
     my $delay = Mojo::IOLoop->delay(
       sub {
+        $self->ua()->max_redirects(3);
         $self->find_feeds( $url, shift->begin(0) );
       },
       sub {
