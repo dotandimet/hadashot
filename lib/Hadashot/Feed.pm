@@ -34,18 +34,18 @@ sub river {
         $self->app->log->error("Error getting items: ", $err);
         $self->render(text => ":( $err");
       }
-      elsif (!$docs || @$docs == 0) {
-        $self->render(
-          text => "Got nothing :( = " . $self->dumper($cursor->explain()));
-      }
       else {
-        map { $self->backend->sanitize_item($_) } @$docs;
-        map { $self->backend->set_item_direction($_) } @$docs;
-        if ($sort->{'published'} == 1)
-        {    # not sorted in reverse chronological order
-          @$docs = sort { $b->{'published'} <=> $a->{'published'} } @$docs;
-        }
-        my $data = {items => $docs, total => scalar @$docs};
+        my $data = {items => [], total => 0};
+        if ($docs && @$docs > 0) {
+          map { $self->backend->sanitize_item($_) } @$docs;
+          map { $self->backend->set_item_direction($_) } @$docs;
+          if ($sort->{'published'} == 1)
+          {    # not sorted in reverse chronological order
+            @$docs = sort { $b->{'published'} <=> $a->{'published'} } @$docs;
+          }
+          $data->{items} = $docs;
+          $data->{total} = scalar @$docs;
+          }
         if ($self->param('js')) {
           $self->render(json => $data);
         }

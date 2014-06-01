@@ -1,6 +1,5 @@
 package Hadashot::Settings;
 use Mojo::Base 'Mojolicious::Controller';
-use Mango::BSON qw(encode_int64);
 
 # This action will render a template
 
@@ -42,7 +41,7 @@ sub blogroll {
             'last'  => {'$max' => '$published'}
           }
         }
-      ],
+      ])->all(
       $delay->begin()
     );
    },

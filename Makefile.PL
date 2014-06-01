@@ -12,7 +12,8 @@ WriteMakefile(
     'Mojolicious::Plugin::FeedReader' => '0.02',
     'Mango'                           => '0.04',
     'HTTP::Date'                      => '6.02',
-    'Time::Zone'                      => '2.2'
+    'Time::Zone'                      => '2.2',
+    'List::MoreUtils'                 => '0.33'
   },
     LICENSE      => 'artistic_2',
     ABSTRACT     => 'RSS Reader, using Mongo DB and Mojolicious',
