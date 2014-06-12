@@ -119,7 +119,7 @@ sub add_subscription {
         return $delay->pass("No feeds found for $url :(")
           unless (@feeds > 0);
         # TODO add support for multiple feeds later ...
-        $self->app->log->info("Found feed: " . $feeds[0]) ;
+        $self->app->log->info("Found feeds: " . join(q{, }, @feeds)) ;
         $delay->data(xmlUrl => $feeds[0]);
         $delay->pass(undef, @feeds);
      },
