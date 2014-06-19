@@ -21,10 +21,10 @@ var Subscription = React.createClass({
                                   ( (this.props.items) ? this.props.items : 0)
                                   ) ),
       React.DOM.div({ className:"list-group-item-text" },
-                    ( (this.props.categories) 
+                    ( (this.props.categories)
                         ?  $.map(this.props.categories, function(v,i) {
                             return React.DOM.span({
-                              className: "label label-default", 
+                              className: "label label-default",
                               key: v }, v); })
                         : React.DOM.span({ className: "label label-default" },
                         'uncategorized') ),
@@ -32,7 +32,7 @@ var Subscription = React.createClass({
                    moment(this.props.last_modified).fromNow() : '' ),
                    ( (this.props.etag) ? ' Etag: ' + this.props.etag : '' ) ),
 
-     ((!this.props.active || !this.props.active) 
+     ((!this.props.active || !this.props.active)
         ? ( React.DOM.span({ className:"label label-warning",
            title : ((this.props.error) ?  this.props.error : 'Not Active'),
            ref: 'error',
@@ -79,7 +79,7 @@ var FeedItem = React.createClass({displayName: 'FeedItem',
   render: function() {
   return (
     React.DOM.div( {className:"entry panel panel-default", key: this.props.key },
-      React.DOM.div( {className:"panel-heading"}, 
+      React.DOM.div( {className:"panel-heading"},
         React.DOM.h4( {className: "title panel-title ", dir: this.props.title.dir },
         React.DOM.a( {href: this.props.link },  this.props.title.content ),
         React.DOM.span( {className:"author"},  this.props.author ? this.props.author : '' )),
@@ -89,7 +89,7 @@ var FeedItem = React.createClass({displayName: 'FeedItem',
       (this.props.tags) ? this.props.tags.map(function(t){return React.DOM.a( {className:"tag label label-default",
         href:"?tag=" + window.encodeURIComponent(t),  key: t },  t ) }) : React.DOM.span(null )
       ),
-      React.DOM.div( {className:"panel-body"}, 
+      React.DOM.div( {className:"panel-body"},
         ((this.props.content)) ?
         React.DOM.div( {className:"content", dir: this.props.content.dir,
         dangerouslySetInnerHTML:{__html: this.props.content.content }} ) : '',
@@ -103,7 +103,7 @@ var FeedItem = React.createClass({displayName: 'FeedItem',
     );
   },
   componentDidMount: function() {
-    
+
   }
 });
 
@@ -191,9 +191,15 @@ $( window ).on('hashchange', function() { feeds.handleLoad(); });
   }
 
   function earlier() {
-    feeds.load(feeds.url, { before: last_on_page });
+      window.location.hash = obj_to_query_str( { before: last_on_page } );
+  //  feeds.load(feeds.url, { before: last_on_page });
 //    hadashot.subsLoad('#feeds', 'feed_tmpl', '/feed/river/?js=1&before=' + last_on_page, 'items');
     return false;
+  }
+
+  function later() {
+      window.location.hash = obj_to_query_str( { after: first_on_page } );
+      return false();
   }
   function load_feed(ev) {
     ev.preventDefault();
@@ -201,4 +207,3 @@ $( window ).on('hashchange', function() { feeds.handleLoad(); });
     // hadashot.subsLoad('#feeds', 'feed_tmpl', '/feed/river/?js=1&src=' + this.href, 'items');
     return false;
   }
-
