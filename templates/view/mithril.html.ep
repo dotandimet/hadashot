@@ -1,0 +1,52 @@
+% layout 'bootstrap';
+% title 'Now with javascript';
+% content_for extra_scripts => begin
+     %= javascript url_for('/js/libs/moment-2.2.1.js')
+     %= javascript url_for('/js/libs/moment-timezone-0.0.1.js')
+     %= javascript url_for('/js/libs/mithril-0.1.21.js')
+     %= javascript url_for('/js/mithril-app.js')
+
+% end
+<style type="text/css">
+#feeds {
+/*  overflow: auto;
+  position: relative;
+  height: 600px; */
+}
+.entry img, .entry iframe, .entry object {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+[dir=ltr]: {
+  text-align: left;
+}
+
+[dir=rtl]: {
+  text-align: right;
+}
+
+[dir=ltr] .author:not(:empty):before {
+  content: ' by ';
+}
+
+[dir=rtl] .author:not(:empty):before {
+  content: ' מאת ';
+}
+
+</style>
+<div class="container">
+  <div class="myui row">
+    <div id="sublist" class="list-group col-md-3">
+      <p>It looks like you aren't subscribed to any feeds.</p>
+      <p>Use <b>Settings -> Subscribe...</b> or <b>Settings -> Import...</b>
+      to add some.</p>
+    </div>
+    <div class="col-md-9">
+      <div id="feeds">
+      </div>
+    </div>
+  </div>
+</div>
+
+
