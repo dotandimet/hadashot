@@ -51,16 +51,22 @@ var tooltip_config = function(ctrl) {
 };
 
 var blogroll = {
-  controller: function() {
-    this.items = m.request({method: 'GET', url: '/settings/blogroll', data: { js: 1 } }).then(function(res){ return res.subs; });
-  },
-  view: function(ctrl) {
+  get_subs : function() {
+  return m.request({method: 'GET', url: '/settings/blogroll', data: { js: 1 } })
+              .then(function(res){ return res.subs; });
+}
+};
+
+blogroll.controller = function() {
+    this.items = blogroll.get_subs();
+};
+
+blogroll.view = function(ctrl) {
      var items = ctrl.items().map(function(item, i){
         var sc = new Subscription.controller( item );
         return Subscription.view(sc);
      });
    return m('div', {}, items);
-  }
 };
 
 var FeedItem = {

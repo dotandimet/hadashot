@@ -14,7 +14,7 @@ sub import_opml {
         $self->app->log->error($err) if ($err);
       } );
       $delay->on(finish => sub {
-        $self->redirect_to('settings/blogroll');
+        $self->redirect_to('/settings/blogroll');
       });
       for my $sub (@subs) {
         $self->backend->save_subscription($sub, $delay->begin(0));
