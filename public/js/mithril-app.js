@@ -1,8 +1,5 @@
-
-var Subscription = {
-  controller: function(sub) { this.sub = sub; return this; },
-  view: function(ctrl) {
-    var c = ctrl.sub;
+var blogroll = {};
+blogroll.subscription = function(c) {
     return(
     m('div', { class:"list-group-item" }, [
       m('div', { class:"list-group-item-heading" }, [
@@ -11,11 +8,11 @@ var Subscription = {
                       'rss' ),
                     m('a', { href: c.htmlUrl, dir: 'ltr' },
                     c.title ),
-                    m('a', { href : "#" + obj_to_query_str({src : c.xmlUrl}),
-                                  title: ((c.last && c.last > 0) ? 'Latest item: ' +
+                    m('a', { href : obj_to_query_str({src : c.xmlUrl}),
+                             title: ((c.last && c.last > 0) ? 'Latest item: ' +
                                   moment(c.last).fromNow() : '...' ),
                                   'data-toggle': "tooltip",
-                                  config: tooltip_config(c),
+                                  config: route_config(c),
                                   ref: 'itemCount',
                                   class: "badge" },
                                   ( (c.items) ? c.items : 0)
@@ -40,7 +37,7 @@ var Subscription = {
           m('span', {class: "glyphicon glyphicon-warning-sign"})) )
         : '' )
     ] ));
-} };
+};
 
 var tooltip_config = function(ctrl) {
   return function(el, isInitialized) {
@@ -50,11 +47,17 @@ var tooltip_config = function(ctrl) {
   }
 };
 
-var blogroll = {
-  get_subs : function() {
+var route_config = function(ctrl) {
+  var tt = tooltip_config(ctrl);
+  return function(){
+    tt();
+    m.route();
+  };
+}
+
+blogroll.get_subs = function() {
   return m.request({method: 'GET', url: '/settings/blogroll', data: { js: 1 } })
               .then(function(res){ return res.subs; });
-}
 };
 
 blogroll.controller = function() {
@@ -63,68 +66,72 @@ blogroll.controller = function() {
 
 blogroll.view = function(ctrl) {
      var items = ctrl.items().map(function(item, i){
-        var sc = new Subscription.controller( item );
-        return Subscription.view(sc);
+        return blogroll.subscription( item );
      });
    return m('div', {}, items);
 };
 
-var FeedItem = {
-  controller: function(config) { this.props = config; return this; },
-  view: function(c) {
+var Feeds = {};
+Feeds.ItemView = function(c) {
   return (
     m('div.entry.panel.panel-default', [
       m('div.panel-heading', [
-        m('h4.title.panel-title', { dir: c.props.title.dir }, [
-          m('a', {href: c.props.link },  c.props.title.content ),
-          m('span', {className:"author"},  c.props.author ? c.props.author : '' )
+        m('h4.title.panel-title', { dir: c.title.dir }, [
+          m('a', {href: c.link },  c.title.content ),
+          m('span', {className:"author"},  c.author ? c.author : '' )
         ]),
-        m('span', {className:"tim"},  moment(c.props.published).fromNow() ),
-        m('a', {href: "/feed/debug/?_id=" + c.props.key }, "debug"),
-        m('a', {className:"origin fa fa-rss", href: window.encodeURIComponent(c.props.origin),  title:"Source: " + c.props.origin },  " " ),
-        (c.props.tags) ? c.props.tags.map(function(t){return m('a', {className:"tag label label-default",
+        m('span', {className:"tim"},  moment(c.published).fromNow() ),
+        m('a', {href: "/feed/debug/?_id=" + c.key }, "debug"),
+        m('a', {className:"origin fa fa-rss", href: window.encodeURIComponent(c.origin),  title:"Source: " + c.origin },  " " ),
+        (c.tags) ? c.tags.map(function(t){return m('a', {className:"tag label label-default",
         href:"?tag=" + window.encodeURIComponent(t),  key: t },  t ) }) : m('span', '' )
        ]
       ),
       m("div.panel-body", [
-        ((c.props.content)) 
-        ?  m('div', {className:"content", dir: c.props.content.dir },
-             m.trust( c.props.content.content ) )
+        ((c.content))
+        ?  m('div', {className:"content", dir: c.content.dir },
+             m.trust( c.content.content ) )
         : '',
 
-        (!c.props.content && c.props.description)
-        ?  m('div', {className:"well", dir: c.props.description.dir },
-             m.trust( c.props.description.content ) )
+        (!c.content && c.description)
+        ?  m('div', {className:"well", dir: c.description.dir },
+             m.trust( c.description.content ) )
         : ''
         ]
       )
     ])
     );
-  }
 };
 
-var Feeds = {
-  controller: function() {
-    arg = query_str_to_obj(window.location.hash.substr(1));
-    this.items = m.request( {method: 'GET', url:'/feed/river', data: arg } )
+Feeds.items = function() {
+  var r = m.route();
+  if (r) {
+    
+  }
+  arg = query_str_to_obj(r);
+  return m.request( {method: 'GET', url:'/feed/river', data: arg } )
                  .then(function(resp) {
                   var items = resp.items;
                   last_on_page = items[items.length-1].published;
                   first_on_page = items[0].published;
                   return items;
                   });
-  },
-  view: function(ctrl) {
-     var items = ctrl.items().map(function(item, i){
-        var sc = new FeedItem.controller( item );
-        return FeedItem.view(sc);
-        });
-     return m('div', items);
-  },
 };
 
-m.module(document.getElementById('sublist'), blogroll);
+Feeds.controller = function() {
+    arg = query_str_to_obj(window.location.hash.substr(1));
+    this.items = Feeds.items(arg);
+};
+
+Feeds.view = function(ctrl) {
+     var items = ctrl.items().map(function(item, i){
+        return Feeds.ItemView( item );
+     });
+     return m('div', items);
+};
+
 m.module(document.getElementById('feeds'), Feeds);
+m.module(document.getElementById('sublist'), blogroll);
 
 /*
  $( window ).on('hashchange', function() { feeds.handleLoad(); });
