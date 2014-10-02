@@ -8,11 +8,11 @@ blogroll.subscription = function(c) {
                       'rss' ),
                     m('a', { href: c.htmlUrl, dir: 'ltr' },
                     c.title ),
-                    m('a', { href : obj_to_query_str({src : c.xmlUrl}),
+                    m('a', { href : '/feed/src=' + window.encodeURIComponent(c.xmlUrl),
                              title: ((c.last && c.last > 0) ? 'Latest item: ' +
                                   moment(c.last).fromNow() : '...' ),
                                   'data-toggle': "tooltip",
-                                  config: route_config(c),
+                                  config: route_func,
                                   ref: 'itemCount',
                                   class: "badge" },
                                   ( (c.items) ? c.items : 0)
@@ -32,28 +32,23 @@ blogroll.subscription = function(c) {
      ((!c.active || !c.active)
         ? ( m('span', { class:"label label-warning",
            title : ((c.error) ?  c.error : 'Not Active'),
-           config: tooltip_config(c),
+           config: tooltip_func,
           'data-toggle' :"tooltip" },
           m('span', {class: "glyphicon glyphicon-warning-sign"})) )
         : '' )
     ] ));
 };
 
-var tooltip_config = function(ctrl) {
-  return function(el, isInitialized) {
+var tooltip_func = function(el, isInitialized) {
     if (isInitialized)
       return;
     $(el).tooltip();
-  }
 };
 
-var route_config = function(ctrl) {
-  var tt = tooltip_config(ctrl);
-  return function(){
-    tt();
-    m.route();
-  };
-}
+var route_func = function(el, isinit, ctx) {
+  m.route(el, isinit, ctx);
+  tooltip_func(el, isinit, ctx);
+};
 
 blogroll.get_subs = function() {
   return m.request({method: 'GET', url: '/settings/blogroll', data: { js: 1 } })
@@ -81,8 +76,8 @@ Feeds.ItemView = function(c) {
           m('span', {className:"author"},  c.author ? c.author : '' )
         ]),
         m('span', {className:"tim"},  moment(c.published).fromNow() ),
-        m('a', {href: "/feed/debug/?_id=" + c.key }, "debug"),
-        m('a', {className:"origin fa fa-rss", href: window.encodeURIComponent(c.origin),  title:"Source: " + c.origin },  " " ),
+        m('a', {href: "/feed/debug/?_id=" + c._id }, "debug"),
+        m('a', {className:"origin fa fa-rss", href: c.origin,  title:"Source: " + c.origin },  " " ),
         (c.tags) ? c.tags.map(function(t){return m('a', {className:"tag label label-default",
         href:"?tag=" + window.encodeURIComponent(t),  key: t },  t ) }) : m('span', '' )
        ]
@@ -104,11 +99,10 @@ Feeds.ItemView = function(c) {
 };
 
 Feeds.items = function() {
-  var r = m.route();
-  if (r) {
-    
+  if (m.route.param('feed')) {
+    arg = query_str_to_obj(m.route.param('feed'));
   }
-  arg = query_str_to_obj(r);
+//  arg = { js: 1 }; // query_str_to_obj(r);
   return m.request( {method: 'GET', url:'/feed/river', data: arg } )
                  .then(function(resp) {
                   var items = resp.items;
@@ -130,7 +124,9 @@ Feeds.view = function(ctrl) {
      return m('div', items);
 };
 
-m.module(document.getElementById('feeds'), Feeds);
+m.route.mode = 'hash';
+m.route( document.getElementById('feeds'), '/feed/river',
+         { '/feed/:feed...' : Feeds } );
 m.module(document.getElementById('sublist'), blogroll);
 
 /*
