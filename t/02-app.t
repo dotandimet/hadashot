@@ -4,7 +4,7 @@ use utf8;
 use Test::More;
 use Test::Mojo;
 use Mojo::URL;
-use Mojo::Util qw(slurp dumper);
+use Mojo::Util qw(slurp dumper url_escape decode);
 use FindBin;
 
 use Hadashot::Backend;
@@ -12,8 +12,8 @@ use Hadashot::Backend;
 
 BEGIN {
   $ENV{'MOJO_CONFIG'} = File::Spec->catdir($FindBin::Bin, 'test.conf');
-  binmode STDERR, ':utf8';
-  binmode STDOUT, ':utf8';
+  binmode STDERR, ':encoding(UTF-8)';
+  binmode STDOUT, ':encoding(UTF-8)';
 }
 
 my $t = Test::Mojo->new('Hadashot');
@@ -34,14 +34,15 @@ diag "Got atom.xml from $xml_url";
 # rewrite URL to how the app sees it
 $xml_url = $base->clone->path($xml_url->path);
 diag "Set xml_url to $xml_url\n";
+my $url_encoded_xml_url = url_escape($xml_url);
 # Add Subscription:
 my $add_sub_url =
 $t->post_ok('/settings/add_subscription', form => {url => '/atom.xml' })
   ->status_is(302)
-  ->header_like(Location => qr{/view/feed\?src=$xml_url})->tx->req->url;
+  ->header_like(Location => qr{/view/feed\?src=$url_encoded_xml_url})->tx->req->url;
 
 $t->get_ok('/settings/blogroll?js=1')->status_is(200)
-  ->content_type_is('application/json')->json_is('/subs/0/xmlUrl' => $xml_url)
+  ->content_type_is('application/json;charset=UTF-8')->json_is('/subs/0/xmlUrl' => $xml_url)
   ->json_is('/subs/0/title' => 'First Weblog');
 
 
@@ -53,7 +54,7 @@ $t->post_ok('/settings/add_subscription', form => {url => 'http://corky.net'})
 # Check blogroll:
 $t->get_ok('/settings/blogroll?js=1')
   ->status_is(200)
-  ->content_type_is('application/json')
+  ->content_type_is('application/json;charset=UTF-8')
   ->json_is('/subs/0/title', 'קורקי.נט aggregator');
 
 # Upload subscriptions from OPML file:
