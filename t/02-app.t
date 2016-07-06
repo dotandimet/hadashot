@@ -9,11 +9,15 @@ use FindBin;
 
 use Hadashot::Backend;
 
+# Voodoo to prevent wide characters in output,
+# see here: https://metacpan.org/pod/Test::More#utf8-Wide-character-in-print
+my $builder = Test::More->builder;
+binmode $builder->output,         ":encoding(UTF-8)";
+binmode $builder->failure_output, ":encoding(UTF-8)";
+binmode $builder->todo_output,    ":encoding(UTF-8)";
 
 BEGIN {
   $ENV{'MOJO_CONFIG'} = File::Spec->catdir($FindBin::Bin, 'test.conf');
-  binmode STDERR, ':encoding(UTF-8)';
-  binmode STDOUT, ':encoding(UTF-8)';
 }
 
 my $t = Test::Mojo->new('Hadashot');
