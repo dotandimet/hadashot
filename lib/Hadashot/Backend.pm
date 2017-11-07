@@ -3,7 +3,7 @@ use v5.016;
 use Mojo::Base -base;
 use Mojo::DOM;
 use Mojo::JSON;
-use Mojo::Util qw(decode slurp trim dumper);
+use Mojo::Util qw(decode trim dumper);
 use Mojo::IOLoop;
 use Mango;
 use Mango::BSON qw(bson_time bson_true bson_false);
@@ -183,16 +183,6 @@ sub store_feed_item {
   }
 }
 
-sub parse_json_collection {
-  my ($self, $file) = @_;
-  my $str   = slurp $file;
-  my $obj   = $self->json->decode($str);
-  my $items = delete $obj->{'items'};
-  foreach my $item (@$items) {
-
-  }
-  my $props = $obj;
-}
 
 sub cleanup_reader_fields {
   my ($self, $item) = @_;

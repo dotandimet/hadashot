@@ -4,7 +4,7 @@ use utf8;
 use Test::More;
 use Test::Mojo;
 use Mojo::URL;
-use Mojo::Util qw(slurp dumper url_escape decode);
+use Mojo::Util qw(dumper url_escape decode);
 use FindBin;
 
 use Hadashot::Backend;
