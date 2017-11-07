@@ -13,7 +13,6 @@ WriteMakefile(
     'Mango'                           => '0.04',
     'HTTP::Date'                      => '6.02',
     'Time::Zone'                      => '2.2',
-    'List::MoreUtils'                 => '0.33',
     'Devel::Cycle'	              => ''
   },
     LICENSE      => 'artistic_2',

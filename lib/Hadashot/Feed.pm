@@ -2,7 +2,7 @@ package Hadashot::Feed;
 use Mojo::Base 'Mojolicious::Controller';
 use Mango::BSON qw(bson_oid bson_time);
 use Mojo::Util qw(encode);
-use List::MoreUtils qw(uniq);
+use Mojo::Collection qw(c);
 
 sub river {
   my ($self) = @_;
@@ -84,7 +84,8 @@ sub debug {
     $reparse = {};
   }
   else {
-    @keys = sort { length $a <=> length $b } uniq(keys %$item, keys %$reparse);
+    @keys = sort { length $a <=> length $b } 
+            c(keys %$item, keys %$reparse)->uniq->each;
   }
   $self->render(
     item  => $item,
