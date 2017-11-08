@@ -3,7 +3,7 @@ use v5.016;
 use Mojo::Base -base;
 use Mojo::DOM;
 use Mojo::JSON;
-use Mojo::Util qw(decode trim dumper);
+use Mojo::Util qw(decode encode trim dumper);
 use Mojo::IOLoop;
 use Mango;
 use Mango::BSON qw(bson_time bson_true bson_false);
@@ -96,57 +96,46 @@ sub update_feed {
       $sub->{$field} = $feed->{$field};
     }
   }
-  my $delay = Mojo::IOLoop->delay(
-    sub {
-      my ($delay, @args) = @_;
-      foreach my $item (@{$feed->{'items'}}) {
-        $item->{'origin'} = $sub->{xmlUrl};    # save our source feed...
-        my $base = Mojo::URL->new($sub->{htmlUrl} || $sub->{xmlUrl});
-         # fix relative links - because Sam Ruby is a wise-ass
-        eval {
-          local $SIG{'__WARN__'} = sub { warn "Warning ", $@, " ", dumper($item); };
-          $item->{'link'} = Mojo::URL->new($item->{'link'})->to_abs($base)->to_string;
-        };
-        if ($@) {
-          warn "Got an exception $@ when fixing link " . $item->{'link'} . "with base " . $base;
-        }
-        #$self->cleanup_item_link($item, $delay->begin(0));
-        $delay->pass($item);
+  my $now = bson_time();
+  foreach my $item (@{$feed->{'items'}}) {
+    $item->{'origin'} = $sub->{xmlUrl};    # save our source feed...
+    my $base = Mojo::URL->new($sub->{htmlUrl} || $sub->{xmlUrl});
+      # fix relative links - because Sam Ruby is a wise-ass
+    eval {
+      local $SIG{'__WARN__'} = sub { warn "Warning ", $@, " ", dumper($item); };
+      $item->{'link'} = Mojo::URL->new($item->{'link'})->to_abs($base)->to_string;
+    };
+    if ($@) {
+      warn "Got an exception $@ when fixing link " . $item->{'link'} . "with base " . $base;
+    }
+    #$self->cleanup_item_link($item, $delay->begin(0));
+    # convert dates to Mongodb BSON ?
+    $now = $now - 2000; # decrement default "date" between items - because RSS is ordered from new to old.
+    for (qw(published updated)) {
+      if ($item->{$_}) {
+        $item->{$_} = bson_time $item->{$_} * 1000;
       }
-   },
-    sub {
-      my ($delay, @items) = (@_);
-      my $now = bson_time();
-      foreach my $item (@items) {
-        warn "Storing item... " . $item->{'link'} . '-' . $item->{'title'} . "\n" if (DEBUG);
-      # convert dates to Mongodb BSON ?
-        $now = $now - 2000; # decrement default "date" between items - because RSS is ordered from new to old.
-        for (qw(published updated)) {
-          if ($item->{$_}) {
-            $item->{$_} = bson_time $item->{$_} * 1000;
-          }
-          else { # no date, so save when we stored it:
-            $item->{$_} = bson_time $now;
-          }
-        }
+      else { # no date, so save when we stored it:
+        $item->{$_} = bson_time $now;
+      }
+    }
+}
+  my $delay = Mojo::IOLoop->delay(
+     sub {
+      my ($delay) = shift;
+      foreach my $item (@{$feed->{'items'}}) {
         $self->store_feed_item($item, $delay->begin(0));
       }
     },
    sub {
       my ($delay, @args) = @_;
-      unless ($delay->data('saved')) {
-        $delay->data('saved' => $sub->{xmlUrl});
-        warn "Saved update to subscription", $sub->{xmlUrl} . "\n" if (DEBUG);
-        $self->save_subscription($sub, $delay->begin(0));
-      }
+      $self->save_subscription($sub, $delay->begin(0));
    },
   sub {
     my ($delay, @args) = @_;
     return $cb->(@args);
   }
   );
-  $delay->on('error' => sub { warn "Error in update_feed:", @_; });
-#  $delay->wait unless (Mojo::IOLoop->is_running);
 }
 
 sub cleanup_item_link {
@@ -173,7 +162,7 @@ sub store_feed_item {
     return $cb->("No link for item $identifier");
   }
   else {
-    $self->log->info("Saving item with $link - $title");
+    $self->log->info("Saving item with $link");
 
     $self->items->update({link => $link}, $item, {upsert => 1},
       sub {

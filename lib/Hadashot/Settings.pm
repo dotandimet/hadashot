@@ -120,12 +120,12 @@ sub add_subscription {
           unless (@feeds > 0);
         # TODO add support for multiple feeds later ...
         $self->app->log->info("Found feeds: " . join(q{, }, @feeds)) ;
-        $delay->data(xmlUrl => $feeds[0]);
         $delay->pass(undef, @feeds);
      },
      sub {
-        my ($delay, $err, $xmlUrl) = @_;
-        return $delay->pass($err) unless ($xmlUrl);
+        my ($delay, $err, $feed_url) = @_;
+        return $delay->pass($err) unless ($feed_url);
+        $xmlUrl = $feed_url; # instead of using $delay->data
         $self->backend->queue->get($xmlUrl, $delay->begin(0));
      },
      sub {
@@ -137,14 +137,14 @@ sub add_subscription {
               (($info->{error}) ? "Error " . $info->{error} : ''));
         }
         else { # got a feed
-            my $sub = { xmlUrl => '' . $delay->data('xmlUrl'), %$info };
+            my $sub = { xmlUrl => '' . $xmlUrl, %$info };
             $self->backend->handle_feed_update($sub, $feed, $info, $delay->begin(0)); # also does save_subscription
         }
      },
      sub {
            my ($delay, $errors) = @_;
            return $self->render(text => $errors) if ($errors);
-           my $dest = $self->url_for('/view/feed')->query({src => $delay->data('xmlUrl')});
+           my $dest = $self->url_for('/view/feed')->query({src => $xmlUrl});
            $self->redirect_to($dest);
      } );
   }
