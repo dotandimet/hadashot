@@ -116,6 +116,7 @@ sub add_subscription {
       },
       sub {
         my ($delay, @feeds) = @_;
+        $self->ua()->max_redirects(0); # reset state
         return $delay->pass("No feeds found for $url :(")
           unless (@feeds > 0);
         # TODO add support for multiple feeds later ...
@@ -145,6 +146,7 @@ sub add_subscription {
            my ($delay, $errors) = @_;
            return $self->render(text => $errors) if ($errors);
            my $dest = $self->url_for('/view/feed')->query({src => $xmlUrl});
+#           $self->ua->max_redirects(0); # reset this, important when testing this very redirect!
            $self->redirect_to($dest);
      } );
   }
